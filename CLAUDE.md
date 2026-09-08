@@ -11,17 +11,23 @@ note.com への記事投稿を Claude Code に自動化させるプロジェク�
 3. 検証を通った記事を note に下書き保存する（既定では自動公開はしない）
 4. 何を書いたか・何を投稿したかを `articles/state.json` に記録し、次回ループでの重複を防ぐ
 
-投稿は note.com に公式の書き込み API が無いため、**Claude in Chrome によるブラウザ操作**で行う。
-実行前に Chrome で note.com に手動ログインしておくこと（認証情報をこのリポジトリやコードに保存しない）。
+投稿は note.com に公式の書き込み API が無いため、非公式ライブラリ
+[NoteClient2](https://github.com/Mr-SuperInsane/NoteClient2)（`pip install NoteClient2`、
+Playwright ログイン + note 内部 API、`scripts/post_note.py` から呼び出す）を使う。
+認証は `.env` の `email` / `password` / `user_url_id`（`.env.example` 参照、コミットしない）。
 
 ## 安全設計（重要）
 
-- 既定は `AUTO_PUBLISH=false` 相当の運用：スキルは note の「下書き保存」までしか行わない。
-  実際の公開ボタンは人間が押す。自動公開に倒す場合は明示的にユーザーへ確認すること。
+- 既定はスキル・スクリプトとも `is_publish=False` 相当（下書き保存まで）。実際の公開
+  （`--publish` を付けての実行）は、ユーザーが対象記事を個別に明示承認した場合のみ行う。
+  ループ実行中に自動判断で公開しない。
 - 1 ループ実行あたり生成する記事数の上限を必ず決めてから回す（例: 1 日 1 本まで）。
 - 生成した記事のトピック・タイトルは `articles/state.json` の履歴と突き合わせ、重複や類似を避ける。
 - 投稿先アカウントは常にユーザー本人の note アカウントであることを前提とする。他人のアカウントや
   スクレイピング目的でこの仕組みを使わない。
+- NoteClient2 は非公式・非商用限定ライセンス（INSANE License）。過度な自動投稿・スパム的な
+  連続投稿はしない。note 側の仕様変更でライブラリが壊れる可能性がある前提で運用する。
+- `.env` の内容（メールアドレス・パスワード）を出力・引用・ログに残さない。
 
 ## ループの種類と使い分け
 
@@ -42,11 +48,15 @@ note.com への記事投稿を Claude Code に自動化させるプロジェク�
 .claude/skills/
   note-topic-ideas/     トピック案をバックログに追加するスキル
   note-article-draft/   トピックから記事を生成し自己検証するスキル
-  note-article-publish/ 承認済み下書きを note にブラウザ操作で下書き保存するスキル
+  note-article-publish/ 承認済み下書きを NoteClient2 経由で note に投稿するスキル
+scripts/
+  post_note.py           NoteClient2 を呼び出す投稿スクリプト本体
 articles/
   drafts/                生成した記事の Markdown（レビュー待ち）
   published/              note に投稿済みの記事のアーカイブ
   state.json              トピック履歴・投稿履歴・重複防止用の状態
+.env.example              NoteClient2 用の認証情報テンプレート（実値は .env、コミット禁止）
+requirements.txt           Python 依存関係（NoteClient2, python-dotenv）
 ```
 
 ## 記事のスタイルガイド

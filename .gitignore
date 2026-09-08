@@ -3,3 +3,12 @@ node_modules/
 *.log
 .env
 .env.local
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# NoteClient2 が保存するログイン Cookie（scripts/post_note.py で明示指定）
+.note_session.json
+.note_publish_tmp_*.md

@@ -5,17 +5,34 @@ Claude Code に note.com 向けの記事執筆〜下書き投稿を任せるた�
 
 ## セットアップ
 
-1. Chrome で note.com に手動ログインしておく（このリポジトリは認証情報を一切保持しない）。
-2. `CLAUDE.md` の「記事のスタイルガイド」を、実際に書かせたいトーン・文字数・NGトピックで埋める。
+1. Python 依存関係をインストールする（NoteClient2 は非公式ライブラリ、pip 経由で提供）。
+   ```bash
+   python3 -m venv .venv && source .venv/bin/activate
+   pip install -r requirements.txt
+   playwright install
+   ```
+2. `.env.example` を `.env` にコピーし、note のログイン情報を入力する（`.env` はコミットしない）。
+   ```bash
+   cp .env.example .env
+   # email / password / user_url_id を編集
+   ```
+3. `CLAUDE.md` の「記事のスタイルガイド」を、実際に書かせたいトーン・文字数・NGトピックで埋める。
    ここが空のままだとスキルは既定値（1500〜3000字、方針は都度確認）で動く。
+
+NoteClient2 は note 非公式のライブラリ（[Mr-SuperInsane/NoteClient2](https://github.com/Mr-SuperInsane/NoteClient2)）で、
+Playwright ログイン + note 内部 API を組み合わせて投稿する。個人・非商用利用限定のライセンスであり、
+note 側の仕様変更で動かなくなる可能性がある前提で使うこと。
 
 ## 使い方（手動 / ターンベース）
 
 ```
 note のネタを5個考えて（note-topic-ideas）
 「<トピック>」で note の記事を1本ドラフトして（note-article-draft）
-articles/drafts/<slug>.md を note に下書き保存して（note-article-publish）
+articles/drafts/<slug>.md を note に下書き保存して（note-article-publish → scripts/post_note.py）
 ```
+
+`note-article-publish` は内部で `python scripts/post_note.py articles/drafts/<slug>.md` を実行する。
+既定は下書き保存のみ。実際に公開する場合のみ、対象記事を明示指定した上で `--publish` を付ける。
 
 ## ゴールベースで回す（/goal）
 
