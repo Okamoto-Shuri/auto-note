@@ -5,22 +5,16 @@ Claude Code に note.com 向けの記事執筆〜下書き投稿を任せるた�
 
 ## セットアップ
 
-1. Python 依存関係をインストールする（NoteClient2 は非公式ライブラリ、pip 経由で提供）。
-   ```bash
-   python3 -m venv .venv && source .venv/bin/activate
-   pip install -r requirements.txt
-   playwright install
-   ```
-2. `.env.example` を `.env` にコピーし、note のログイン情報を入力する（`.env` はコミットしない）。
-   ```bash
-   cp .env.example .env
-   # email / password / user_url_id を編集
-   ```
+Python の依存関係インストールなどは不要。必要なのはブラウザでのログインだけ。
+
+1. Claude-in-Chrome（Claude Code のブラウザ拡張連携）が使える状態にしておく。
+2. 普段使いのブラウザで [note.com](https://note.com) に手動でログインしておく。
+   投稿処理はこのログイン済みセッションをそのまま使うため、ログインの自動化は行わない
+   （note.com 側のボット検知でヘッドレス自動ログインが拒否されることを確認済み）。
 3. `CLAUDE.md` の「記事のスタイルガイド」を、実際に書かせたいトーン・文字数・NGトピックで埋める。
    ここが空のままだとスキルは既定値（1500〜3000字、方針は都度確認）で動く。
 
-NoteClient2 は note 非公式のライブラリ（[Mr-SuperInsane/NoteClient2](https://github.com/Mr-SuperInsane/NoteClient2)）で、
-Playwright ログイン + note 内部 API を組み合わせて投稿する。個人・非商用利用限定のライセンスであり、
+投稿は `scripts/note_web_publish.js` が note.com の内部API（非公式）を直接呼び出して行う。
 note 側の仕様変更で動かなくなる可能性がある前提で使うこと。
 
 ## 使い方（手動 / ターンベース）
@@ -28,11 +22,13 @@ note 側の仕様変更で動かなくなる可能性がある前提で使うこ
 ```
 note のネタを5個考えて（note-topic-ideas）
 「<トピック>」で note の記事を1本ドラフトして（note-article-draft）
-articles/drafts/<slug>.md を note に下書き保存して（note-article-publish → scripts/post_note.py）
+articles/drafts/<slug>.md を note に下書き保存して（note-article-publish）
 ```
 
-`note-article-publish` は内部で `python scripts/post_note.py articles/drafts/<slug>.md` を実行する。
-既定は下書き保存のみ。実際に公開する場合のみ、対象記事を明示指定した上で `--publish` を付ける。
+`note-article-publish` は、note.com にログイン済みの Claude-in-Chrome タブ上で
+`scripts/note_web_publish.js` を実行し、`NoteWeb.publish(...)` を呼び出す。
+既定は下書き保存のみ（`isPublish: false`）。実際に公開する場合のみ、対象記事を明示指定した上で
+`isPublish: true` を指定するようユーザーが依頼する。
 
 ## ゴールベースで回す（/goal）
 
@@ -64,10 +60,14 @@ articles/drafts/<slug>.md を note に下書き保存して（note-article-publi
 
 実際に note へ公開する（下書き保存を超えて公開ボタンまで押す）操作は、必ず
 ユーザーが個別の記事を指定して明示的に依頼したときのみ `note-article-publish` に行わせること。
+また、下書き保存する `note-article-draft`/`note-article-publish` の呼び出し自体は
+Claude-in-Chrome での操作を伴うため、`/schedule` での完全放置運用時も note.com への
+ログインセッションが有効であることが前提になる。
 
 ## ディレクトリ
 
 - `.claude/skills/` — 各作業を自己検証込みで実行するスキル群
+- `scripts/note_web_publish.js` — note 内部APIを直接叩く投稿スクリプト（Claude-in-Chromeで実行）
 - `articles/drafts/` — 生成済み・レビュー待ちの記事
 - `articles/published/` — 実際に note へ公開した記事のアーカイブ
 - `articles/state.json` — トピック履歴・下書き/投稿履歴（重複防止・状態管理用）

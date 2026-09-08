@@ -1,2 +1,0 @@
-NoteClient2
-python-dotenv
