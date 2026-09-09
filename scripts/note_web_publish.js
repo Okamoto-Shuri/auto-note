@@ -20,6 +20,24 @@
  * （Playwright + note内部APIを使う非公式Pythonライブラリ。本スクリプトは、その
  *   内部API呼び出し部分・Markdown変換ロジックをブラウザ実行用に移植したもので、
  *   ログイン部分だけをブラウザの実セッション利用に置き換えている）
+ *
+ * 実装範囲について:
+ * このファイルは「自分の記事を書いて投稿・管理する」という本プロジェクトの目的に
+ * 沿う内部APIのみを実装する。note の内部APIには他にも多数のエンドポイントが
+ * 存在するが（例: https://note.com/marie_222/n/n6a10366298b0 に整理されている
+ * ログイン・いいね・フォロー・コメント投稿・メンバーシップ/掲示板の作成運用など）、
+ * 以下は意図的に実装しない。
+ * - メール+パスワードでの自動ログイン（`POST /api/v1/sessions/sign_in`）:
+ *   note.com のボット検知でヘッドレス自動ログインが拒否されることを確認済みであり、
+ *   認証は常にユーザー本人の手動ログイン済みブラウザセッションに委ねる設計のため。
+ * - いいね・フォロー・コメント投稿/編集/削除など他人のコンテンツに書き込む系API:
+ *   自分の記事投稿という目的の範囲外で、自動化するとスパム的操作になり得るため。
+ * - メンバーシップ(Circle)・掲示板(Board)の作成/運用系API:
+ *   記事の執筆・投稿とは別のコミュニティ/マネタイズ機能であり、現状の用途外のため。
+ *
+ * `unpublishNote` / `deleteNote` / `deleteDraft` は取り消しが効かない、または
+ * 効きにくい破壊的操作なので、呼び出し側は実行前に必ずユーザーの明示確認を取ること
+ * （`isPublish: true` の公開と同様の扱い）。
  */
 (function () {
   function readXsrfToken() {
@@ -59,6 +77,15 @@
 
   async function apiGet(url) {
     const res = await fetch(url, { credentials: "include" });
+    return finishResponse(res);
+  }
+
+  async function apiDelete(url) {
+    const res = await fetch(url, {
+      method: "DELETE",
+      credentials: "include",
+      headers: authHeaders(),
+    });
     return finishResponse(res);
   }
 
@@ -330,10 +357,27 @@
     return { ok: true, data: { uploaded: true } };
   }
 
-  // ---- マガジン解決 ----
+  // ---- マガジン ----
 
-  async function resolveMagazineId(userUrlname, magazineKey) {
-    if (!magazineKey) return { ok: true, data: { magazineId: null } };
+  async function getMyMagazines() {
+    const result = await apiGet("https://note.com/api/v1/my/magazines");
+    if (!result.ok || !result.json) {
+      return { ok: false, error: { type: "MyMagazinesFetchFailed", status: result.status, detail: result.text } };
+    }
+    return { ok: true, data: result.json.data || result.json };
+  }
+
+  async function getMagazineByKey(magazineKey) {
+    const result = await apiGet(`https://note.com/api/v1/magazines/${magazineKey}`);
+    if (!result.ok || !result.json || !result.json.data) {
+      return { ok: false, error: { type: "MagazineFetchFailed", status: result.status, detail: result.text } };
+    }
+    return { ok: true, data: result.json.data };
+  }
+
+  // 旧実装（マガジンページのHTMLに埋め込まれたJSONからidを正規表現で抜く方式）。
+  // 正規API (`getMagazineByKey`) が想定外の形で失敗した場合のフォールバックとして残す。
+  async function resolveMagazineIdViaHtml(userUrlname, magazineKey) {
     const url = `https://note.com/${userUrlname}/m/${magazineKey}`;
     const res = await fetch(url, { credentials: "include" });
     if (!res.ok) {
@@ -346,6 +390,15 @@
       return { ok: false, error: { type: "MagazineIdNotFound", url } };
     }
     return { ok: true, data: { magazineId: parseInt(m[1], 10) } };
+  }
+
+  async function resolveMagazineId(userUrlname, magazineKey) {
+    if (!magazineKey) return { ok: true, data: { magazineId: null } };
+    const viaApi = await getMagazineByKey(magazineKey);
+    if (viaApi.ok && viaApi.data && viaApi.data.id) {
+      return { ok: true, data: { magazineId: viaApi.data.id } };
+    }
+    return resolveMagazineIdViaHtml(userUrlname, magazineKey);
   }
 
   // ---- 現在のユーザー情報 ----
@@ -413,6 +466,112 @@
       return { ok: false, error: { type: "PublishFailed", status: result.status, detail: result.text } };
     }
     return { ok: true };
+  }
+
+  // ---- 既存記事の取得（リライト・確認用） ----
+
+  async function getNote(noteKey, opts) {
+    opts = opts || {};
+    const params = new URLSearchParams();
+    if (opts.draft) params.set("draft", "true");
+    if (opts.draftReedit !== undefined) params.set("draft_reedit", String(opts.draftReedit));
+    const qs = params.toString();
+    const result = await apiGet(`https://note.com/api/v3/notes/${noteKey}${qs ? "?" + qs : ""}`);
+    if (!result.ok || !result.json || !result.json.data) {
+      return { ok: false, error: { type: "GetNoteFailed", status: result.status, detail: result.text } };
+    }
+    return { ok: true, data: result.json.data };
+  }
+
+  // ---- 下書き・公開記事の取り消し系（破壊的操作。呼び出し前に必ずユーザー確認を取ること） ----
+
+  async function deleteDraft(noteId) {
+    const result = await apiDelete(`https://note.com/api/v1/text_notes/draft_delete?id=${noteId}`);
+    if (!result.ok) {
+      return { ok: false, error: { type: "DeleteDraftFailed", status: result.status, detail: result.text } };
+    }
+    return { ok: true };
+  }
+
+  // 公開済み記事を下書きに差し戻す。有料記事・販売実績あり・メンバーシップ/マガジン
+  // 紐付きの記事は note 側の制約で 403 になる（記事側の解説記事に記載の既知の制限）。
+  async function unpublishNote(noteKey) {
+    const result = await apiPost(`https://note.com/api/v2/notes/${noteKey}/change_status`, { status: "draft" });
+    if (!result.ok) {
+      return { ok: false, error: { type: "UnpublishFailed", status: result.status, detail: result.text } };
+    }
+    return { ok: true };
+  }
+
+  // 公開済み記事のソフトデリート。取り消し不可な破壊的操作。
+  async function deleteNote(noteId) {
+    const result = await apiDelete(`https://note.com/api/v1/notes/${noteId}`);
+    if (!result.ok) {
+      return { ok: false, error: { type: "DeleteNoteFailed", status: result.status, detail: result.text } };
+    }
+    return { ok: true };
+  }
+
+  // ---- 添付ファイル・note内埋め込み ----
+
+  async function uploadAttachment(base64, filename, mime, noteKey) {
+    const form = new FormData();
+    form.append("file", base64ToBlob(base64, mime), filename);
+    form.append("file_name", filename);
+    form.append("note_key", noteKey);
+
+    const res = await fetch("https://note.com/api/v2/attachments/upload", {
+      method: "POST",
+      credentials: "include",
+      headers: authHeaders(),
+      body: form,
+    });
+    const result = await finishResponse(res);
+    const attachmentKey = result.json && result.json.data && result.json.data.attachment_key;
+    if (!result.ok || !attachmentKey) {
+      return { ok: false, error: { type: "AttachmentUploadFailed", status: result.status, detail: result.text } };
+    }
+    return { ok: true, data: { attachmentKey } };
+  }
+
+  // 自分の別記事などを note 記事として本文中にネイティブ埋め込みする。
+  // embeddableKey は埋め込み対象記事の key（n... 形式）。
+  async function embedNote(embeddableKey, height) {
+    const form = new FormData();
+    form.append("url", `https://note.com/notes/${embeddableKey}`);
+    form.append("height", String(height || 211));
+    form.append("embeddable_type", "Note");
+    form.append("embeddable_key", embeddableKey);
+
+    const res = await fetch("https://note.com/api/v1/embed", {
+      method: "POST",
+      credentials: "include",
+      headers: authHeaders(),
+      body: form,
+    });
+    const result = await finishResponse(res);
+    const embedKey =
+      result.json && result.json.data && result.json.data.embedded_content && result.json.data.embedded_content.key;
+    if (!result.ok || !embedKey) {
+      return { ok: false, error: { type: "EmbedFailed", status: result.status, detail: result.text } };
+    }
+    return { ok: true, data: { embedKey } };
+  }
+
+  // ---- 自分の記事のPV統計（ネタ選定・成果記録用） ----
+
+  async function getPvStats(opts) {
+    opts = opts || {};
+    const params = new URLSearchParams({
+      filter: opts.filter || "all",
+      page: String(opts.page || 1),
+      sort: opts.sort || "pv",
+    });
+    const result = await apiGet(`https://note.com/api/v1/stats/pv?${params.toString()}`);
+    if (!result.ok || !result.json) {
+      return { ok: false, error: { type: "PvStatsFetchFailed", status: result.status, detail: result.text } };
+    }
+    return { ok: true, data: result.json.data || result.json };
   }
 
   // ---- 画像の一括アップロード（Markdown中の![alt](path)を事前解決） ----
@@ -545,9 +704,18 @@
     uploadImage,
     uploadEyecatch,
     resolveMagazineId,
+    getMyMagazines,
+    getMagazineByKey,
     getCurrentUser,
     createNoteSkeleton,
     saveDraft,
     publish,
+    getNote,
+    deleteDraft,
+    unpublishNote,
+    deleteNote,
+    uploadAttachment,
+    embedNote,
+    getPvStats,
   };
 })();
