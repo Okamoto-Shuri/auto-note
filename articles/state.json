@@ -17,6 +17,12 @@
       "topic_id": null,
       "kw": "中国のAI",
       "at": "2026-09-09T09:01:07Z"
+    },
+    {
+      "title": "宇宙AIは何を変える？衛星・探査・天文学の現在地と課題",
+      "topic_id": null,
+      "kw": "宇宙 AI",
+      "at": "2026-09-09T13:09:16.392Z"
     }
   ],
   "drafts": [],
@@ -29,7 +35,18 @@
       "note_key": "n2078daed8489",
       "is_publish": true,
       "at": "2026-09-08T15:00:26Z"
+    },
+    {
+      "file": "articles/published/space-ai-three-axes.md",
+      "title": "宇宙AIは何を変える？衛星・探査・天文学の現在地と課題",
+      "kw": "宇宙 AI",
+      "created_at": "2026-09-09T11:43:27Z",
+      "note_url": "https://note.com/leal_rabbit26/n/n47ed458e4cd9",
+      "note_id": 179394764,
+      "note_key": "n47ed458e4cd9",
+      "is_publish": true,
+      "at": "2026-09-09T13:09:16.392Z"
     }
   ],
-  "last_run_at": "2026-09-08T15:00:26Z"
+  "last_run_at": "2026-09-09T13:09:16.392Z"
 }
