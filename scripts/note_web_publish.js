@@ -16,11 +16,6 @@
  *      magazineKeys, isPublish })` を呼び出す。images / eyecatch はローカル画像を
  *      base64 化して渡す（ブラウザJSはローカルファイルパスを直接読めないため）。
  *
- * 参考実装: https://github.com/Mr-SuperInsane/NoteClient2
- * （Playwright + note内部APIを使う非公式Pythonライブラリ。本スクリプトは、その
- *   内部API呼び出し部分・Markdown変換ロジックをブラウザ実行用に移植したもので、
- *   ログイン部分だけをブラウザの実セッション利用に置き換えている）
- *
  * 実装範囲について:
  * このファイルは「自分の記事を書いて投稿・管理する」という本プロジェクトの目的に
  * 沿う内部APIのみを実装する。note の内部APIには他にも多数のエンドポイントが
@@ -111,7 +106,6 @@
   }
 
   // ---- Markdown -> note HTML 変換 ----
-  // NoteClient2/markdown_parser.py の移植版。
   // images は事前アップロード済みの { [参照パス]: { url, key } } マップを渡すこと。
 
   function parseInline(text) {
@@ -269,7 +263,6 @@
     flushList();
 
     // <pre>...</pre> の内部だけ改行を挟んで結合する（それ以外は直結合）。
-    // NoteClient2/markdown_parser.py の build_html() と同じロジック。
     function buildHtml(parts) {
       let final = "";
       let isInCode = false;

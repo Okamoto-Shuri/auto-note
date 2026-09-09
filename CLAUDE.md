@@ -15,11 +15,6 @@ note.com への記事投稿を Claude Code に自動化させるプロジェク�
 を `scripts/note_web_publish.js` から直接呼び出す。認証は Claude-in-Chrome 上でユーザーが手動で
 ログイン済みのブラウザセッションにすべて委ねる（自動ログインは行わない）。
 
-当初は非公式ライブラリ [NoteClient2](https://github.com/Mr-SuperInsane/NoteClient2)
-（Playwright によるヘッドレスログイン + 内部API）を使う方針だったが、note.com 側のボット検知
-によりヘッドレスブラウザからの自動ログインが拒否されることを確認したため、認証をユーザー本人の
-実ブラウザセッションに委ね、投稿処理のみを内部APIへの直接リクエストとして行う方式に変更した。
-
 ## 安全設計（重要）
 
 - 既定はスキル・スクリプトとも `isPublish: false` 相当（下書き保存まで）。実際の公開

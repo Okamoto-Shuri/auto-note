@@ -4,7 +4,6 @@ node_modules/
 .env
 .env.local
 
-# 旧 NoteClient2 方式で使っていた名残。もう必須ではないが、誤コミット防止のため残す。
 .venv/
 __pycache__/
 *.pyc
