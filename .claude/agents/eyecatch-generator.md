@@ -59,8 +59,10 @@ Claude-in-Chromeのスクリーンショット操作の詳細やArtifact URLな�
    `Can't interact with browser-internal or unparseable URLs` エラーになるため、
    **必ずArtifactとして公開してからそのURLを開く**。
 6. `tabs_create_mcp` で新規タブを開き、`navigate` でArtifact URLに遷移する。
-   `resize_window` で概ね1280×670にリサイズする（テンプレートは `100vw/100vh` 基準なので
-   厳密な一致は不要）。Google Fontsの読み込みを待つため1〜2秒待ってから次に進む。
+   note.com の推奨アイキャッチサイズである **1280×670px** に合わせて、`resize_window` で
+   ウィンドウのビューポートを1280×670に設定する（テンプレートは `100vw/100vh` 基準なので、
+   ここでの指定がそのまま最終画像サイズになる。曖昧なリサイズで済ませない）。
+   Google Fontsの読み込みを待つため1〜2秒待ってから次に進む。
 7. `computer` の `zoom` action で、region を `[0, 41, <画面幅>, <画面高さ>]`
    （Artifactページ上部のツールバー分、上40〜41pxを除外する）に指定し、
    `save_to_disk: true` を付けて実行する。これがクロップ済みの最終PNGになる。

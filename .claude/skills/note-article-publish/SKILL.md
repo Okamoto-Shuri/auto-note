@@ -105,7 +105,16 @@ Claude-in-Chromeは「ログイン済みセッションのCookieを使わせる�
    - 公開: 該当エントリを `drafts` から削除し、`published` に
      `{ file, title, note_url: data.publicUrl, note_id: data.noteId, note_key: data.noteKey,
      is_publish: true, at }` を追加
-9. 実施した操作（下書き保存のみ／公開まで行ったか）と note 側のURLを報告する。
+9. **本公開が完了した場合は、ローカルの下書き記事ファイルを削除する。** 手順5で
+   `isPublish: true` により本公開まで成功し、手順8で `articles/state.json` の該当エントリを
+   `published` に移した場合、記事本体は note 側に残るためローカルの
+   `articles/drafts/<slug>.md` はもう不要になる。`rm articles/drafts/<slug>.md` で削除する
+   （同名の `<slug>.seo-brief.md` は内部の設計・監査資料なので削除しない）。
+   手順6の下書き保存（`isPublish: false`）のみで終えた場合は、ユーザーが後日このファイルを
+   使って本公開に進める可能性がある（`publish()` は既存ノートの更新に対応せず、常に新規ノートを
+   作成するため）ため、ここでは削除しない。
+10. 実施した操作（下書き保存のみ／公開まで行ったか、下書きファイルを削除したか）と
+    note 側のURLを報告する。
 
 ## アイキャッチ画像の作成方法（必須・マスト）
 
