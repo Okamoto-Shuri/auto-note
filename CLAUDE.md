@@ -100,7 +100,7 @@ note.com への記事投稿を Claude Code に自動化させるプロジェク�
   seo-auditor.md          note-article-seo-draft のPhase7（簡易ファクトチェック）専任agent。書き手の文脈を
                          引き継がない独立した第三者として簡易ファクトチェックを行う（自分ではファイルを編集しない）
   eyecatch-generator.md   note-article-publish から呼ばれるアイキャッチ画像生成専任agent。
-                         templates/eyecatch_template.html への文言差し替え〜Artifact公開〜
+                         templates/eyecatch_template_vermilion.html への文言差し替え〜Artifact公開〜
                          Claude-in-Chromeでのスクリーンショット/クロップまでを単独で行い、
                          保存済みPNGのファイルパスだけを返す
 .claude/skills/
@@ -118,7 +118,7 @@ note.com への記事投稿を Claude Code に自動化させるプロジェク�
 scripts/
   note_web_publish.js     Claude-in-Chrome 上で実行する、note 内部APIを直接叩く投稿スクリプト
 templates/
-  eyecatch_template.html  記事アイキャッチ画像のHTMLテンプレート（{{KICKER}}/{{TITLE}}を差し替えて使う）
+  eyecatch_template_*.html 記事アイキャッチ画像のHTMLテンプレート（色違い。朱 vermilion / 藍 indigo / 翠 emerald / 藤 violet / 琥珀 amber / 青磁 cyan。{{KICKER}}/{{TITLE}}を差し替えて使う）
 articles/
   drafts/                note-article-seo-draft が生成した記事の Markdown（`<slug>.md`）と、
                          同名で拡張子違いの `<slug>.seo-brief.md`

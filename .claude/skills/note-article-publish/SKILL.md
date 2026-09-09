@@ -124,7 +124,7 @@ noteへの下書き保存・本公開を行う際は、必ず事前に `eyecatch
    中間結果は返ってこない前提でよい。
 3. 受け取ったPNGを base64 化し、次項（画像アップロード）の `eyecatch` に渡す。
 4. デザインを大きく変えたい場合（配色パターンを増やす、レイアウトの別バリエーションを作る等）は、
-   その場限りで済ませず `templates/eyecatch_template.html` 自体、または `templates/` 配下に
+   その場限りで済ませず `templates/eyecatch_template_vermilion.html` 自体、または `templates/` 配下に
    新しいバリエーションとして追記・保存し、次回以降 `eyecatch-generator` から再利用できる
    ようにする。
 
