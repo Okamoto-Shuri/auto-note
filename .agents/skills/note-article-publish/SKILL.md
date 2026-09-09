@@ -13,7 +13,9 @@ description: articles/drafts/ の承認済み・監査済み記事を、専用Ch
 
 - 1回につき1記事だけ処理する。
 - 対象は`articles/drafts/`内の本文Markdownとする。`*.seo-brief.md`は投稿しない。
-- アイキャッチは必須。未生成なら`eyecatch-generator` agentに委譲し、1280×670pxのPNGを
+- アイキャッチは必須。未生成ならサブエージェント起動ツールで
+  `agent_type: "eyecatch-generator"` と `fork_turns: "none"` を指定して委譲し、
+  タイトル・KICKER・雰囲気・出力先だけを渡して1280×670pxのPNGを
   `articles/drafts/images/`へ生成する。既に対象記事用の完成済み画像がある場合は再生成しない。
 - 公開指定がなければ`is_publish: true`。ユーザーが下書きのみを指定した場合、または
   `/loop`・`/schedule`などの無人実行では`is_publish: false`。

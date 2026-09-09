@@ -34,7 +34,7 @@ EEAT（実績・一次情報）や記事のゴールなど、こちらで補え�
 （検索意図分析・差別化設計・ファクトチェックなどの内部資料。note には投稿しない）の2ファイル。
 
 **Phase7の簡易ファクトチェック（`seo-auditor` agent）を経て必要箇所の修正が完了した記事は、
-公開／下書きの指定が無ければそのまま `note-article-publish` に引き継ぎ、`isPublish: true` で
+公開／下書きの指定が無ければそのまま `note-article-publish` に引き継ぎ、`is_publish: true` で
 本公開まで行う。** 改めて「公開していいですか」と聞き直してはならない。下書き保存だけで
 止めたい場合は依頼時に「下書きだけでいい」のように明示する。
 
@@ -44,8 +44,7 @@ EEAT（実績・一次情報）や記事のゴールなど、こちらで補え�
 内部的には検索意図分析（`seo-researcher`）・差別化/構成設計（`seo-planner`）・簡易ファクトチェック
 （`seo-auditor`）を専任のsubagent（`.codex/agents/`）に委譲している。特にファクトチェックは、
 書いた本人がチェックすると見落としが生じやすいため、執筆の経緯を共有しない独立agentに
-完成品だけを見せて客観的に確認させる設計にしている。詳しくは`AGENTS.md`の「スキルとagentの使い分け」
-を参照。
+完成品だけを見せて客観的に確認させる設計にしている。
 
 ```
 articles/published/claude-code-vs-codex-2026.md を note-article-seo-draft でリライト分析して
@@ -54,7 +53,7 @@ articles/published/claude-code-vs-codex-2026.md を note-article-seo-draft で�
 `note-article-publish`は`note_publisher` MCPの`publish_note`を呼ぶ。MCPが専用Chromeのnoteタブ上で
 `scripts/note_web_publish.js`を実行し、`NoteWeb.publish(...)`を呼び出す。この呼び出し自体は
 内部APIへの`fetch`のみで完結し、画面操作は行わない。指定が無ければ
-`isPublish: true`（本公開）。下書き保存のみで終える場合だけ `isPublish: false` を指定する。
+`is_publish: true`（本公開）。下書き保存のみで終える場合だけ `is_publish: false` を指定する。
 
 ## ゴールベースで回す（/goal）
 
@@ -87,11 +86,16 @@ articles/published/claude-code-vs-codex-2026.md を note-article-seo-draft で�
 ```
 
 無人実行で溜まった下書きを実際に公開する場合は、必ずユーザーが個別の記事を指定して
-明示的に依頼したときのみ `note-article-publish` に `isPublish: true` で行わせること。
+明示的に依頼したときのみ `note-article-publish` に `is_publish: true` で行わせること。
 また、下書き保存の呼び出し自体は専用Chromeセッションを使うため、`/schedule`での
 完全放置運用時も note.com へのログインセッションが有効であることが前提になる。
 
 ## ディレクトリ
+
+`.agents/` と `.codex/` はClaude Code由来の重複ではなく、Codexが用途別に定める標準配置。
+[スキル](https://developers.openai.com/codex/skills)は `.agents/skills/`、
+[プロジェクト設定](https://developers.openai.com/codex/config-basic)と
+[カスタムエージェント](https://developers.openai.com/codex/subagents)は `.codex/` に置く。
 
 - `.codex/agents/` — 検索意図分析・差別化/構成設計・簡易ファクトチェック・アイキャッチ画像生成
   （`eyecatch-generator`）を担当する独立subagent

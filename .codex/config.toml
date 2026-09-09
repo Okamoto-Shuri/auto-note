@@ -1,7 +1,7 @@
 [mcp_servers.note_publisher]
 command = "node"
 args = ["scripts/note_mcp_server.mjs"]
-cwd = "/Users/shuriokamoto/dev/auto-note"
+cwd = ".."
 required = true
 startup_timeout_sec = 10
 tool_timeout_sec = 180
