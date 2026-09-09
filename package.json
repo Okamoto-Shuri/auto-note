@@ -1,0 +1,13 @@
+{
+  "name": "auto-note",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "note:browser": "node scripts/note_browser_cli.mjs open",
+    "note:status": "node scripts/note_browser_cli.mjs status",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

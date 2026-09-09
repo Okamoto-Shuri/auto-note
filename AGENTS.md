@@ -12,8 +12,8 @@ note.com への記事投稿を Codex に自動化させるプロジェクト。
 4. 何を書いたか・何を投稿したかを `articles/state.json` に記録し、次回ループでの重複を防ぐ
 
 投稿は note.com に公式の書き込み API が無いため、note の内部API（非公式・リバースエンジニアリング）
-を `scripts/note_web_publish.js` から直接呼び出す。認証は Codex-in-Chrome 上でユーザーが手動で
-ログイン済みのブラウザセッションにすべて委ねる（自動ログインは行わない）。
+を `scripts/note_web_publish.js` から直接呼び出す。認証は `note_publisher` MCPが所有する専用Chromeで
+ユーザーが手動ログイン済みのブラウザセッションにすべて委ねる（自動ログインは行わない）。
 
 ## 安全設計（重要）
 
@@ -31,11 +31,11 @@ note.com への記事投稿を Codex に自動化させるプロジェクト。
 - 生成した記事のトピック・タイトルは `articles/state.json` の履歴と突き合わせ、重複や類似を避ける。
 - 投稿先アカウントは常にユーザー本人の note アカウントであることを前提とする。他人のアカウントや
   スクレイピング目的でこの仕組みを使わない。
-- ログインの自動化は行わない。note.com へのログインは常にユーザー本人が Codex-in-Chrome 上で
+- ログインの自動化は行わない。note.com へのログインは常にユーザー本人が専用Chrome上で
   手動で行う（note.com 側のボット検知でヘッドレス自動ログインが拒否されることを確認済み）。
 - note.com とのやり取りは、可能な限り `note_web_publish.js` による内部APIへの直接 `fetch` で
-  完結させる。Codex-in-Chrome は、ログイン済みセッションの Cookie を使わせるための実行環境
-  （`javascript_tool` でのスクリプト実行、ログイン済みタブの検出）としてのみ使い、
+  完結させる。`note_publisher` MCP は、ログイン済みセッションのCookieを使わせるための実行環境
+  （Chrome DevTools Protocolでのスクリプト実行、ログイン済みタブの検出）としてのみ使い、
   `computer`（クリック・スクリーンショット）や `find`/`file_upload` などの画面操作は使わない。
   **アイキャッチ画像の生成・noteへの貼り付け（設定）はマスト（必須）**であり、必ず `eyecatch-generator` agent
   に委譲して作成し、noteの下書き保存・本公開時に確実に添付・設定する。
@@ -113,11 +113,14 @@ note.com への記事投稿を Codex に自動化させるプロジェクト。
                           無ければ続けて note-article-publish に isPublish: true で本公開まで任せる。
                           詳細は同ディレクトリの references/pipeline.md 参照
   note-article-publish/   承認済み下書きを note_web_publish.js 経由で note に投稿するスキル。
-                          実処理はすべて内部APIへの直接fetchで完結させ、Codex-in-Chromeの
-                          画面操作（computer等）は自身では行わず、アイキャッチ画像（マスト・必須）は
+                          実処理はすべて内部APIへの直接fetchで完結させ、専用Chromeの
+                          エディタ画面操作は行わず、アイキャッチ画像（マスト・必須）は
                           eyecatch-generator agentに委譲して必ず作成・noteに貼り付ける
 scripts/
-  note_web_publish.js     Codex-in-Chrome 上で実行する、note 内部APIを直接叩く投稿スクリプト
+  note_web_publish.js     専用Chromeのnoteタブ上で実行する、note内部APIを直接叩く投稿スクリプト
+  note_mcp_server.mjs     Codexへ投稿ツールを公開するローカルSTDIO MCPサーバー
+  note_cdp.mjs            専用Chromeプロファイルの起動とCDP接続
+  note_publish_core.mjs   投稿入力の検証とstate/archive更新
 templates/
   eyecatch_template_*.html 記事アイキャッチ画像の視覚的な参考資料（色違い。朱 vermilion / 藍 indigo / 翠 emerald / 藤 violet / 琥珀 amber / 青磁 cyan）。Codexは配色・構図・文字組みを読み取り、HTMLを描画せず画像を一から生成する
 articles/

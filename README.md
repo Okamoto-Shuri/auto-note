@@ -1,23 +1,23 @@
 # auto-note
 
-Claude Code に note.com 向けの記事執筆〜投稿を任せるための下準備リポジトリ。
-設計の考え方は [`CLAUDE.md`](./CLAUDE.md) を参照。
+Codexにnote.com向けの記事執筆〜投稿を任せるためのリポジトリ。
+設計の考え方は[`AGENTS.md`](./AGENTS.md)を参照。
 
 ## セットアップ
 
-Python の依存関係インストールなどは不要。必要なのはブラウザでのログインだけ。
+Node.js 22以上とGoogle Chromeが必要。npm依存パッケージはない。
 
-1. Claude-in-Chrome（Claude Code のブラウザ拡張連携）が使える状態にしておく。
-2. 普段使いのブラウザで [note.com](https://note.com) に手動でログインしておく。
-   投稿処理はこのログイン済みセッションの Cookie をそのまま使うため、ログインの自動化は行わない
-   （note.com 側のボット検知でヘッドレス自動ログインが拒否されることを確認済み）。
-3. `CLAUDE.md` の「記事のスタイルガイド」を、実際に書かせたいトーン・文字数・NGトピックで埋める。
-   （現在は 4,000〜6,000字・一次情報なしの方針で設定済み）。
+1. このプロジェクトを信頼済みとしてCodexで開く。`.codex/config.toml`によりローカルSTDIO MCP
+   `note_publisher`が自動登録される。Codex CLI/IDEを既に開いていた場合は一度再起動する。
+2. 初回だけ`npm run note:browser`を実行し、開いた専用Chromeで[note.com](https://note.com)へ
+   ユーザー本人が手動ログインする。認証情報は`~/.auto-note/chrome-profile`に保存され、リポジトリには入らない。
+3. `npm run note:status`で`"loggedIn": true`を確認する。
 
 投稿は `scripts/note_web_publish.js` が note.com の内部API（非公式）に直接 `fetch` するだけで
-完結する。Claude-in-Chrome はこのスクリプトを認証済みセッション上で実行するための実行環境
-（ログイン済みタブの検出・スクリプト実行）として使うのみで、クリックやスクリーンショットなどの
-画面操作は原則使わない。note 側の仕様変更で動かなくなる可能性がある前提で使うこと。
+完結する。`note_publisher` MCPは専用Chromeのログイン済みタブを検出し、Chrome DevTools Protocolで
+同スクリプトを実行するだけで、エディタのクリックやスクリーンショット操作は行わない。Cookieを
+MCPへ抽出せず、ページ内コードもCSRF用`XSRF-TOKEN`以外のCookieを読まない。note側の仕様変更で
+壊れる可能性がある前提で使うこと。
 
 ## 使い方（note-article-seo-draft）
 
@@ -42,18 +42,18 @@ EEAT（実績・一次情報）や記事のゴールなど、こちらで補え�
 この場合はファイルを自動上書きせず、修正案を提示してユーザーの承認を待つ）。
 
 内部的には検索意図分析（`seo-researcher`）・差別化/構成設計（`seo-planner`）・簡易ファクトチェック
-（`seo-auditor`）を専任のsubagent（`.claude/agents/`）に委譲している。特にファクトチェックは、
+（`seo-auditor`）を専任のsubagent（`.codex/agents/`）に委譲している。特にファクトチェックは、
 書いた本人がチェックすると見落としが生じやすいため、執筆の経緯を共有しない独立agentに
-完成品だけを見せて客観的に確認させる設計にしている。詳しくは `CLAUDE.md` の「スキルとagentの使い分け」
+完成品だけを見せて客観的に確認させる設計にしている。詳しくは`AGENTS.md`の「スキルとagentの使い分け」
 を参照。
 
 ```
 articles/published/claude-code-vs-codex-2026.md を note-article-seo-draft でリライト分析して
 ```
 
-`note-article-publish` は、note.com にログイン済みの Claude-in-Chrome タブ上で
-`scripts/note_web_publish.js` を `javascript_tool` で実行し、`NoteWeb.publish(...)` を呼び出す。
-この呼び出し自体は内部APIへの `fetch` のみで完結し、画面操作は行わない。指定が無ければ
+`note-article-publish`は`note_publisher` MCPの`publish_note`を呼ぶ。MCPが専用Chromeのnoteタブ上で
+`scripts/note_web_publish.js`を実行し、`NoteWeb.publish(...)`を呼び出す。この呼び出し自体は
+内部APIへの`fetch`のみで完結し、画面操作は行わない。指定が無ければ
 `isPublish: true`（本公開）。下書き保存のみで終える場合だけ `isPublish: false` を指定する。
 
 ## ゴールベースで回す（/goal）
@@ -88,17 +88,18 @@ articles/published/claude-code-vs-codex-2026.md を note-article-seo-draft で�
 
 無人実行で溜まった下書きを実際に公開する場合は、必ずユーザーが個別の記事を指定して
 明示的に依頼したときのみ `note-article-publish` に `isPublish: true` で行わせること。
-また、下書き保存の呼び出し自体は Claude-in-Chrome での実行を伴うため、`/schedule` での
+また、下書き保存の呼び出し自体は専用Chromeセッションを使うため、`/schedule`での
 完全放置運用時も note.com へのログインセッションが有効であることが前提になる。
 
 ## ディレクトリ
 
-- `.claude/agents/` — 検索意図分析・差別化/構成設計・簡易ファクトチェック・アイキャッチ画像生成
+- `.codex/agents/` — 検索意図分析・差別化/構成設計・簡易ファクトチェック・アイキャッチ画像生成
   （`eyecatch-generator`）を担当する独立subagent
-- `.claude/skills/` — 各作業を自己検証込みで実行するスキル群
+- `.agents/skills/` — 各作業を自己検証込みで実行するスキル群
   （`note-article-seo-draft` は詳細な各Phase指示を `references/pipeline.md` に分離している）
-- `scripts/note_web_publish.js` — note 内部APIへの直接fetchで完結する投稿スクリプト
-  （Claude-in-Chromeは実行環境としてのみ使う）
+- `scripts/note_mcp_server.mjs` — Codexに3つの限定ツールを公開するローカルMCPサーバー
+- `scripts/note_cdp.mjs` — 専用Chromeセッションの起動・検出・ページ内スクリプト実行
+- `scripts/note_web_publish.js` — note内部APIへの直接fetchで完結する投稿スクリプト
 - `articles/drafts/` — 生成済み・レビュー待ちの記事
 - `articles/published/` — 実際に note へ公開した記事のアーカイブ
 - `articles/state.json` — トピック履歴・下書き/投稿履歴（重複防止・状態管理用）

@@ -2,7 +2,7 @@
  * note.com 非公式・内部APIを直接叩いて記事を投稿するためのブラウザ実行スクリプト。
  *
  * 前提:
- * - note.com にログイン済みの認証済みブラウザタブ（Claude-in-Chrome）上で実行する。
+ * - note.com にログイン済みの専用Chromeタブ上で実行する。
  * - Playwright によるヘッドレス自動ログインは行わない（note.com 側のボット検知で
  *   ブロックされることが確認されているため）。認証はユーザー本人が手動ログイン
  *   したブラウザセッションの Cookie にすべて委ねる。
@@ -10,7 +10,7 @@
  *   `X-XSRF-TOKEN` ヘッダーに設定する用途にだけ使う。セッションCookie等、認証情報
  *   そのものに相当するCookieには一切アクセスしない。
  *
- * 使い方（Claude Code から javascript_tool で実行する想定）:
+ * 使い方（note_publisher MCPがChrome DevTools Protocol経由で実行する想定）:
  *   1. 本ファイルの内容をそのまま実行し、`window.NoteWeb` を定義する。
  *   2. `await NoteWeb.publish({ title, markdown, images, eyecatch, hashtags, price,
  *      magazineKeys, isPublish })` を呼び出す。images / eyecatch はローカル画像を
@@ -334,8 +334,8 @@
     const form = new FormData();
     form.append("file", base64ToBlob(base64, mime), "blob");
     form.append("note_id", String(noteId));
-    form.append("width", "1920");
-    form.append("height", "1080");
+    form.append("width", "1280");
+    form.append("height", "670");
 
     const res = await fetch("https://note.com/api/v1/image_upload/note_eyecatch", {
       method: "POST",
@@ -344,10 +344,16 @@
       body: form,
     });
     const result = await finishResponse(res);
-    if (!result.ok) {
+    // note may return HTTP 201 even when the JSON body contains a validation
+    // error, so checking the status code alone can report a false success.
+    if (!result.ok || result.json?.error) {
       return { ok: false, error: { type: "EyecatchUploadFailed", status: result.status, detail: result.text } };
     }
-    return { ok: true, data: { uploaded: true } };
+    const url = result.json?.data?.url;
+    if (!url) {
+      return { ok: false, error: { type: "EyecatchUploadResultInvalid", status: result.status, detail: result.text } };
+    }
+    return { ok: true, data: { uploaded: true, url } };
   }
 
   // ---- マガジン ----
