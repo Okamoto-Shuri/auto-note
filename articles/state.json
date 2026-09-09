@@ -11,16 +11,15 @@
       "topic_id": null,
       "kw": "GPT-6 Astra",
       "at": "2026-09-09T04:27:10Z"
-    }
-  ],
-  "drafts": [
+    },
     {
-      "file": "articles/drafts/gpt6-astra-critical-cyber-2026.md",
-      "title": "GPT-6 Astraの「Critical」認定、鵜呑みにしない読み方",
-      "kw": "GPT-6 Astra",
-      "created_at": "2026-09-09T04:27:10Z"
+      "title": "中国のAIを使う前に、日本の個人と企業が知っておきたいこと",
+      "topic_id": null,
+      "kw": "中国のAI",
+      "at": "2026-09-09T09:01:07Z"
     }
   ],
+  "drafts": [],
   "published": [
     {
       "file": "articles/published/claude-code-vs-codex-2026.md",
