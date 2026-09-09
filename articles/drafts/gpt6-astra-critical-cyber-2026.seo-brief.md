@@ -157,7 +157,7 @@
 - **JSON-LD（参考情報、本文には反映しない）**: 記事種別はArticle（FAQPageの併用も検討可）。
   主要エンティティ: GPT-6 Astra, OpenAI, Preparedness Framework。
 - **画像指示（実際に生成し本文に反映済み）**:
-  1. アイキャッチ: `templates/eyecatch_template_vermilion.html` ベース。KICKER="AI SECURITY NEWS" 相当、TITLE=採用タイトル。
+  1. アイキャッチ: 雰囲気に合う `templates/eyecatch_template_*.html` を生成側が選ぶ。KICKER="AI SECURITY NEWS" 相当、TITLE=採用タイトル。雰囲気=セキュリティ速報／冷静な技術解説。
   2. 図解A（リスク段階の階段図）: H2-1末尾に挿入。
   3. 図解B（提供ロールアウト時系列図）: H2-2 / H3-2-3直前に挿入。
   4. 図解C（指標マップ）: H2-3 / H3-3-2直後に挿入。

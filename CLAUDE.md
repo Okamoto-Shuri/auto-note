@@ -100,9 +100,9 @@ note.com への記事投稿を Claude Code に自動化させるプロジェク�
   seo-auditor.md          note-article-seo-draft のPhase7（簡易ファクトチェック）専任agent。書き手の文脈を
                          引き継がない独立した第三者として簡易ファクトチェックを行う（自分ではファイルを編集しない）
   eyecatch-generator.md   note-article-publish から呼ばれるアイキャッチ画像生成専任agent。
-                         templates/eyecatch_template_vermilion.html への文言差し替え〜Artifact公開〜
-                         Claude-in-Chromeでのスクリーンショット/クロップまでを単独で行い、
-                         保存済みPNGのファイルパスだけを返す
+                         記事の雰囲気に合う templates/eyecatch_template_*.html を1つ選んで
+                         文言差し替え〜Artifact公開〜Claude-in-Chromeでのスクリーンショット/クロップ
+                         までを単独で行い、保存済みPNGのファイルパスだけを返す
 .claude/skills/
   note-topic-ideas/       トピック案をバックログに追加するスキル
   note-article-seo-draft/ 8段階SEOパイプライン（要件定義〜検索意図分析〜差別化設計〜構成設計〜
