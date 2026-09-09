@@ -1,7 +1,23 @@
 {
   "topic_backlog": [],
-  "topic_history": [],
+  "topic_history": [
+    {
+      "title": "Claude CodeとCodex、結局どっちがいい？【2026年9月版】料金・得意分野・選び方を徹底比較",
+      "topic_id": null,
+      "at": "2026-09-08T08:19:09Z"
+    }
+  ],
   "drafts": [],
-  "published": [],
-  "last_run_at": null
+  "published": [
+    {
+      "file": "articles/published/claude-code-vs-codex-2026.md",
+      "title": "Claude CodeとCodex、結局どっちがいい？【2026年9月版】料金・得意分野・選び方を徹底比較",
+      "note_url": "https://note.com/leal_rabbit26/n/n2078daed8489",
+      "note_id": 179170029,
+      "note_key": "n2078daed8489",
+      "is_publish": true,
+      "at": "2026-09-08T15:00:26Z"
+    }
+  ],
+  "last_run_at": "2026-09-08T15:00:26Z"
 }

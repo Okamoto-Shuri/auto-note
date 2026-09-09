@@ -58,6 +58,8 @@ note.com への記事投稿を Claude Code に自動化させるプロジェク�
   note-article-publish/ 承認済み下書きを note_web_publish.js 経由で note に投稿するスキル
 scripts/
   note_web_publish.js     Claude-in-Chrome 上で実行する、note 内部APIを直接叩く投稿スクリプト
+templates/
+  eyecatch_template.html  記事アイキャッチ画像のHTMLテンプレート（{{KICKER}}/{{TITLE}}を差し替えて使う）
 articles/
   drafts/                生成した記事の Markdown（レビュー待ち）
   published/              note に投稿済みの記事のアーカイブ
