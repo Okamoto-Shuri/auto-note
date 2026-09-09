@@ -1,6 +1,6 @@
 ---
 name: note-article-publish
-description: articles/drafts/ にある記事を、Claude-in-Chrome の認証済みブラウザセッションを使って note.com の内部APIに直接fetchし、下書き保存または本公開する。処理はすべて内部APIへの直接リクエストで完結させ、Claude-in-Chromeの画面操作（クリック・スクリーンショット）は使わない。アイキャッチ画像が必要な場合（ユーザーが明示的に依頼した場合のみ）は `eyecatch-generator` agentに生成を委譲する。
+description: articles/drafts/ にある記事を、Claude-in-Chrome の認証済みブラウザセッションを使って note.com の内部APIに直接fetchし、下書き保存または本公開する。処理はすべて内部APIへの直接リクエストで完結させ、Claude-in-Chromeの画面操作（クリック・スクリーンショット）は使わない。アイキャッチ画像の生成はマストであり、必ず eyecatch-generator agent に委譲して作成し、noteに貼り付ける（設定する）。
 ---
 
 # note-article-publish
@@ -31,8 +31,9 @@ Claude-in-Chromeは「ログイン済みセッションのCookieを使わせる�
 
 `computer`（クリック・スクリーンショット・キー入力）、`find`、`file_upload` などの画面操作は、
 このスキル自身では一切使わない。内部APIでは代替できない唯一の作業（アイキャッチ画像の
-スクリーンショット取得）は、ユーザーが明示的に依頼した場合のみ `eyecatch-generator` agentに
-委譲する（後述）。新規記事の投稿・下書き保存・本公開は、この2操作の組み合わせだけで完結する
+スクリーンショット取得）は、アイキャッチ画像専任の `eyecatch-generator` agentに
+委譲する（後述）。**アイキャッチ画像の生成およびnoteへの貼り付け（設定）はマスト（必須）**であり、
+必ず生成してnoteに設定する。新規記事の投稿・下書き保存・本公開は、この2操作の組み合わせだけで完結する
 設計になっており、note エディタの画面をクリックして操作する必要はない。
 
 ## 前提
@@ -58,16 +59,20 @@ Claude-in-Chromeは「ログイン済みセッションのCookieを使わせる�
    手動ログインを依頼して待つ）。
 3. `scripts/note_web_publish.js` の内容を、そのタブ上で `javascript_tool` により実行し、
    `window.NoteWeb` を定義する（ページ遷移するたびに再実行が必要）。
-4. 本文中に画像参照 `![alt](path)` がある場合は、各画像ファイルを base64 化し
+4. **アイキャッチ画像の作成（必須）**: 後述の「アイキャッチ画像の作成方法」に従って
+   必ず `eyecatch-generator` agent を呼び出し、アイキャッチPNGを取得して base64 化し、
+   `eyecatch: { base64: "...", mime: "image/png" }` を用意する。アイキャッチ画像の生成および
+   noteへの貼り付け（設定）はマスト（必須）であり省略してはならない。
+   また、本文中に画像参照 `![alt](path)` がある場合は、各画像ファイルを base64 化し
    （例: `base64 -i <path>` や Python の `base64` モジュール）、
-   `{ path, base64, mime }` の配列として次のステップに渡す。アイキャッチも同様に用意する
-   （`--eyecatch` 相当。任意）。
+   `{ path, base64, mime }` の配列として次のステップに渡す。
 5. 下書き保存のみ行う場合（既定）:
    ```js
    await window.NoteWeb.publish({
      title: "<title>",
      markdown: "<frontmatterを除いた本文>",
      images: [/* 任意 */],
+     eyecatch: { base64: "...", mime: "image/png" }, /* 必須: 必ず設定する */
      isPublish: false,
    });
    ```
@@ -80,7 +85,7 @@ Claude-in-Chromeは「ログイン済みセッションのCookieを使わせる�
      title: "<title>",
      markdown: "<本文>",
      images: [/* 任意 */],
-     eyecatch: { base64: "...", mime: "image/png" } /* 任意 */,
+     eyecatch: { base64: "...", mime: "image/png" }, /* 必須: 必ず設定する */
      hashtags: ["タグ1", "タグ2"],
      price: 0,
      magazineKeys: [] /* 任意 */,
@@ -101,13 +106,13 @@ Claude-in-Chromeは「ログイン済みセッションのCookieを使わせる�
      is_publish: true, at }` を追加
 9. 実施した操作（下書き保存のみ／公開まで行ったか）と note 側のURLを報告する。
 
-## アイキャッチ画像の作成方法（任意・ユーザーが明示的に依頼した場合のみ）
+## アイキャッチ画像の作成方法（必須・マスト）
 
-この作業だけは内部APIで代替できず、Claude-in-Chromeでのスクリーンショット・crop操作を伴う
-唯一の例外。**Claude-in-Chromeの操作を最小限にする方針のため、既定ではアイキャッチなしで
-下書き保存・本公開する。** ユーザーが「アイキャッチを作って」等、明示的に依頼した場合のみ、
-`eyecatch-generator` agent（`.claude/agents/eyecatch-generator.md`）にHTML組み立て〜
-Artifact公開〜スクリーンショット〜クロップまでの一式を委譲する。この工程を独立agentに
+この作業は内部APIで代替できず、Claude-in-Chromeでのスクリーンショット・crop操作を伴う
+唯一の例外。**アイキャッチ画像の生成およびnoteへの貼り付け（設定）はマスト（必須）である。**
+noteへの下書き保存・本公開を行う際は、必ず事前に `eyecatch-generator` agent
+（`.claude/agents/eyecatch-generator.md`）にHTML組み立て〜Artifact公開〜スクリーンショット〜
+クロップまでの一式を委譲してアイキャッチ画像を生成し、noteに設定する。この工程を独立agentに
 切り出しているのは、ブラウザ操作・スクリーンショットの生の中間結果でこのスキル自身の
 文脈を汚さないため（`CLAUDE.md`「スキルとagentの使い分け」参照）。
 
@@ -143,5 +148,5 @@ Claude-in-Chromeの画面操作を最小限にする方針（上記参照）と�
 - CSRF対策の `XSRF-TOKEN` Cookie 以外のCookie（セッションCookieなど認証情報に相当するもの）は
   読み取らない。ログイン処理自体を自動化しようとしない。
 - `computer`/`find`/`file_upload` など画面操作系のツールは、このスキル自身では使わない
-  （アイキャッチ画像作成はユーザーが明示的に依頼した場合のみ `eyecatch-generator` agentに
+  （アイキャッチ画像作成はマスト（必須）として必ず `eyecatch-generator` agentに
   委譲し、画面操作はagent側で完結させる）。

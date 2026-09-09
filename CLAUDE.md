@@ -34,8 +34,9 @@ note.com への記事投稿を Claude Code に自動化させるプロジェク�
   完結させる。Claude-in-Chrome は、ログイン済みセッションの Cookie を使わせるための実行環境
   （`javascript_tool` でのスクリプト実行、ログイン済みタブの検出）としてのみ使い、
   `computer`（クリック・スクリーンショット）や `find`/`file_upload` などの画面操作は、
-  内部APIでは代替できない作業（アイキャッチ画像のスクリーンショット取得など、ユーザーが
-  明示的に依頼した場合のみ）に限定する。
+  内部APIでは代替できない作業（アイキャッチ画像のスクリーンショット取得など）に限定する。
+  **アイキャッチ画像の生成・noteへの貼り付け（設定）はマスト（必須）**であり、必ず `eyecatch-generator` agent
+  に委譲して作成し、noteの下書き保存・本公開時に確実に添付・設定する。
 - `scripts/note_web_publish.js` は CSRF対策の `XSRF-TOKEN` Cookie 以外のCookie
   （セッションCookieなど認証情報に相当するもの）には一切アクセスしない。
 - `note_web_publish.js` が公開する記事管理系機能（下書き削除 `deleteDraft`、公開記事の下書き
@@ -94,7 +95,7 @@ note.com への記事投稿を Claude Code に自動化させるプロジェク�
 ```
 .claude/agents/
   seo-researcher.md      note-article-seo-draft のPhase1（検索意図分析）専任agent。
-                         WebSearch/WebFetchで実際に確認した事実のみを根拠に調査する
+                         検索時間を最小限に抑え、信頼性の高いサイト最大3つ程度に絞って調査する
   seo-planner.md          note-article-seo-draft のPhase2・3（差別化設計・構成設計）専任agent
   seo-auditor.md          note-article-seo-draft のPhase7（簡易ファクトチェック）専任agent。書き手の文脈を
                          引き継がない独立した第三者として簡易ファクトチェックを行う（自分ではファイルを編集しない）
@@ -112,8 +113,8 @@ note.com への記事投稿を Claude Code に自動化させるプロジェク�
                           詳細は同ディレクトリの references/pipeline.md 参照
   note-article-publish/   承認済み下書きを note_web_publish.js 経由で note に投稿するスキル。
                           実処理はすべて内部APIへの直接fetchで完結させ、Claude-in-Chromeの
-                          画面操作（computer等）は自身では行わず、アイキャッチ画像が必要な
-                          場合（明示依頼時のみ）は eyecatch-generator agentに委譲する
+                          画面操作（computer等）は自身では行わず、アイキャッチ画像（マスト・必須）は
+                          eyecatch-generator agentに委譲して必ず作成・noteに貼り付ける
 scripts/
   note_web_publish.js     Claude-in-Chrome 上で実行する、note 内部APIを直接叩く投稿スクリプト
 templates/
@@ -138,3 +139,11 @@ articles/
   この範囲（`{MIN_CHAR}`=4,000, `{MAX_CHAR}`=6,000）は、`note-article-seo-draft` の
   Phase 0 で毎回ユーザーに確認せず既定値として使う。アウトライン設計（Phase 3）や
   本文執筆（Phase 5）においても合計文字数が4,000〜6,000字に収まるよう配分・調整する。
+- **リサーチ・Web検索は最低限に抑え、信頼性の高いサイト最大3つ程度に絞る**: 記事制作時の情報収集に
+  時間をかけすぎないよう、Web検索は原則1〜2回、検索結果一覧（スニペット・タイトル）から傾向を把握する。
+  詳細を深掘り・WebFetchする対象は、公式ドメイン・公的機関・大手専門メディアなど**信頼性の高いサイト最大3つ程度**に
+  厳選する。多数のサイトを巡回したり、取得困難なサイトへの再試行・多重検索で時間を浪費することを禁止する。
+- **アイキャッチ画像の生成・noteへの貼り付け（設定）はマスト（必須）**: note記事の制作・投稿において
+  アイキャッチ画像は省略不可（必須）とする。必ず `eyecatch-generator` agent（またはテンプレート方式）
+  を用いてアイキャッチ画像を生成し、noteへの下書き保存・本公開時に必ず貼り付け（アップロード・設定）を行う。
+
