@@ -33,9 +33,9 @@ EEAT（実績・一次情報）や記事のゴールなど、こちらで補え�
 成果物は `articles/drafts/<slug>.md`（note投稿用の本文）と `articles/drafts/<slug>.seo-brief.md`
 （検索意図分析・差別化設計・ファクトチェックなどの内部資料。note には投稿しない）の2ファイル。
 
-**Phase7の簡易ファクトチェック（`seo-auditor` agent）を経て必要箇所の修正が完了した記事は、そのまま
-`note-article-publish` に引き継いで `isPublish: true` での本公開まで行ってよい。** 
-改めて「公開していいですか」と聞き直す必要はない。下書き保存だけで
+**Phase7の簡易ファクトチェック（`seo-auditor` agent）を経て必要箇所の修正が完了した記事は、
+公開／下書きの指定が無ければそのまま `note-article-publish` に引き継ぎ、`isPublish: true` で
+本公開まで行う。** 改めて「公開していいですか」と聞き直してはならない。下書き保存だけで
 止めたい場合は依頼時に「下書きだけでいい」のように明示する。
 
 既存記事のリライトにも対応（軽量モード：検索意図分析→差別化設計→簡易ファクトチェックのみを回す。
@@ -53,8 +53,8 @@ articles/published/claude-code-vs-codex-2026.md を note-article-seo-draft で�
 
 `note-article-publish` は、note.com にログイン済みの Claude-in-Chrome タブ上で
 `scripts/note_web_publish.js` を `javascript_tool` で実行し、`NoteWeb.publish(...)` を呼び出す。
-この呼び出し自体は内部APIへの `fetch` のみで完結し、画面操作は行わない。下書き保存のみで
-終える場合は `isPublish: false`、本公開まで行う場合は `isPublish: true` を指定する。
+この呼び出し自体は内部APIへの `fetch` のみで完結し、画面操作は行わない。指定が無ければ
+`isPublish: true`（本公開）。下書き保存のみで終える場合だけ `isPublish: false` を指定する。
 
 ## ゴールベースで回す（/goal）
 

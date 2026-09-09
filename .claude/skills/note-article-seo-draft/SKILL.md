@@ -10,8 +10,9 @@ description: 上級者向け8段階SEOパイプライン（要件定義→検索
 指示は `references/pipeline.md` にあるので、実行前に必ず全文を読むこと。
 
 **note.comへの実際の投稿・公開処理（API呼び出し）は `note-article-publish` の役割。** ただし
-Phase 7の簡易ファクトチェック（および必要な修正）が完了した記事に限り、本スキルの完了後にそのまま
-`note-article-publish` を `isPublish: true` で呼び出し、本公開まで進めてよい（詳細は手順9）。
+Phase 7の簡易ファクトチェック（および必要な修正）が完了した記事は、公開／下書きの指定が無ければ
+本スキルの完了後にそのまま `note-article-publish` を `isPublish: true` で呼び出し、本公開まで進める
+（詳細は手順9）。
 
 ## エージェント構成（役割分担）
 
@@ -139,13 +140,14 @@ Phase 0 で `AskUserQuestion` を使って良いのは、上記の取得元を�
    - `drafts` に `{ "file": "articles/drafts/<slug>.md", "title": ..., "kw": "<KW>", "created_at": ... }` を追加
    - トピックを `topic_backlog` から取り除き `topic_history` に移す（`kw` も記録する）
 9. **投稿への引き継ぎ。** Phase 7 のファクトチェック（および必要箇所の修正）が完了した場合、続けて
-   `note-article-publish` を呼び出す。
-   - `/loop`・`/schedule` などの無人実行中は、自動では呼び出さず、下書き保存で
+   `note-article-publish` を呼び出す。公開／下書きの指定が無い場合の既定は本公開である。
+   - `/loop`・`/schedule` などの無人実行中は、自動では呼び出さず、リポジトリ上の下書き保存で
      止めてその旨を報告する（`CLAUDE.md` の安全設計を参照）。
-   - それ以外（ユーザーからの通常の呼び出し）では、`note-article-publish` に
-     `articles/drafts/<slug>.md` を渡し、`isPublish: true` で本公開まで進めてよい。
-     改めてユーザーに「公開していいですか」と確認する必要はない。ユーザーが依頼時に
-     「下書きだけでいい」等、公開しない意思を明示していた場合はこの限りでなく、下書き保存で止める。
+   - ユーザーが依頼時に「下書きだけでいい」等、公開しない意思を明示していた場合も、
+     note 上は下書き保存（`isPublish: false`）で止める。
+   - 上記以外（指定の無い通常の呼び出し）では、`note-article-publish` に
+     `articles/drafts/<slug>.md` を渡し、`isPublish: true` で本公開まで進める。
+     改めてユーザーに「公開していいですか」と確認してはならない。
    - `note-article-publish` の結果（`articles/state.json` の `published` への移動、
      公開URLなど）を待ってから最終報告に含める。
 10. 最終報告に必ず含める内容:
@@ -181,6 +183,7 @@ Phase 1 → 2 → 7 のみを実行する。
 - Phase 1〜7 の subagent 呼び出しは順序に強い依存があるため並列化しない。1つの `Agent`
   呼び出しの結果を確認してから次を呼ぶ。
 - note への実際の投稿処理（API呼び出し）自体は `note-article-publish` の役割であり、
-  そちらの手順に従う。ただし手順9のとおり、Phase 7 のファクトチェック（および修正）が完了した記事に限り、
-  本公開まで含めて `note-article-publish` を続けて呼び出してよい（`/loop`・`/schedule` を除く）。
+  そちらの手順に従う。ただし手順9のとおり、Phase 7 のファクトチェック（および修正）が完了した記事は、
+  指定が無ければ本公開まで含めて `note-article-publish` を続けて呼び出す（`/loop`・`/schedule`、
+  および下書きのみの明示依頼を除く）。
 - 1回のスキル呼び出しで作る（投稿する）のは記事1本まで。

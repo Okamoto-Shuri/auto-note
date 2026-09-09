@@ -42,11 +42,12 @@ Claude-in-Chromeは「ログイン済みセッションのCookieを使わせる�
   「note.com に普段のブラウザ操作でログインしてください」と依頼する。ログインの自動化は行わない
   （ボット検知の対象になるため）。
 - 対象は `articles/drafts/` 内の記事で、次のいずれかを満たすものに限る。
-  - `note-article-seo-draft` のPhase7監査（`seo-auditor`）が「公開可」と判定した記事
-    （この場合はそのまま `isPublish: true` で本公開してよい）。
-  - ユーザーが個別に「この記事を投稿してよい」と明示した記事（監査を経ていない場合を含む。
-    この場合は明示された範囲でのみ `isPublish` を決める）。
+  - `note-article-seo-draft` のPhase7監査（`seo-auditor`）が「公開可」と判定した記事。
+  - ユーザーが個別に「この記事を投稿してよい」と明示した記事（監査を経ていない場合を含む）。
   - 上記のいずれでもない、レビュー未了のファイルを勝手に投稿しない。
+- **公開／下書きが未指定なら本公開（`isPublish: true`）**。公開可否を聞き直さない。
+  `isPublish: false` にするのは、ユーザーが下書きのみを明示した場合と、
+  `/loop`・`/schedule` などの無人実行中のみ。
 - note.com は非公式にリバースエンジニアリングした内部APIであり、note 側の仕様変更で
   壊れる可能性がある前提で運用する。過度な自動投稿・スパム的な連続投稿はしない。
 
@@ -66,24 +67,12 @@ Claude-in-Chromeは「ログイン済みセッションのCookieを使わせる�
    また、本文中に画像参照 `![alt](path)` がある場合は、各画像ファイルを base64 化し
    （例: `base64 -i <path>` や Python の `base64` モジュール）、
    `{ path, base64, mime }` の配列として次のステップに渡す。
-5. 下書き保存のみ行う場合（既定）:
+5. **既定は本公開。** 「前提」を満たし、かつ下書きのみの明示／無人実行のいずれでもない場合は
+   `isPublish: true` で実行する（公開可否の確認はしない）。
    ```js
    await window.NoteWeb.publish({
      title: "<title>",
      markdown: "<frontmatterを除いた本文>",
-     images: [/* 任意 */],
-     eyecatch: { base64: "...", mime: "image/png" }, /* 必須: 必ず設定する */
-     isPublish: false,
-   });
-   ```
-6. 次のいずれかに該当する場合、`isPublish: true` と関連オプションを付けて実行する
-   （「前提」の条件を満たさない記事には使わない）。
-   - `note-article-seo-draft` のPhase7監査が当該記事を「公開可」と判定していた場合。
-   - ユーザーが当該記事を個別に明示承認した場合。
-   ```js
-   await window.NoteWeb.publish({
-     title: "<title>",
-     markdown: "<本文>",
      images: [/* 任意 */],
      eyecatch: { base64: "...", mime: "image/png" }, /* 必須: 必ず設定する */
      hashtags: ["タグ1", "タグ2"],
@@ -94,6 +83,18 @@ Claude-in-Chromeは「ログイン済みセッションのCookieを使わせる�
    ```
    - 有料記事にする場合は、本文 Markdown 中に `<pay>` タグ（1行のみ・1回のみ）が
      意図通りの位置にあるか事前に確認し、`price` に0より大きい値を指定する。
+6. 次のいずれかに該当する場合のみ、`isPublish: false` で下書き保存する。
+   - ユーザーが「下書きだけでいい」など、公開しない意思を明示した場合。
+   - `/loop`・`/schedule` などの無人実行中。
+   ```js
+   await window.NoteWeb.publish({
+     title: "<title>",
+     markdown: "<本文>",
+     images: [/* 任意 */],
+     eyecatch: { base64: "...", mime: "image/png" }, /* 必須: 必ず設定する */
+     isPublish: false,
+   });
+   ```
 7. 戻り値の `ok` を確認する。`false` なら `error` フィールドをそのままユーザーに報告し、
    勝手にリトライしすぎない（1〜2回まで）。成功時、下書きは `data.editUrl`、
    公開時は `data.publicUrl` に note 側のURLが入る。
@@ -146,8 +147,9 @@ Claude-in-Chromeの画面操作を最小限にする方針（上記参照）と�
   仕様変更を疑い、無理に自動操作を続けず状況を報告する。
 - 1 回のスキル呼び出しで投稿するのは 1 本まで。複数本をまとめて自動公開しない。
 - `isPublish: true` は「前提」に挙げた2条件（Phase7監査の公開可判定、またはユーザーの
-  個別明示承認）のいずれかを満たす場合のみ付ける。`/loop`・`/schedule` などの無人実行中は、
-  Phase7が公開可でも自動では `isPublish: true` を付けず、下書き保存にとどめる。
+  個別明示承認）のいずれかを満たす場合に付ける。満たし、かつ公開／下書きの指定が無ければ
+  必ず `isPublish: true` にする。`/loop`・`/schedule` などの無人実行中、および下書きのみの
+  明示がある場合は `isPublish: true` を付けず、下書き保存にとどめる。
 - CSRF対策の `XSRF-TOKEN` Cookie 以外のCookie（セッションCookieなど認証情報に相当するもの）は
   読み取らない。ログイン処理自体を自動化しようとしない。
 - `computer`/`find`/`file_upload` など画面操作系のツールは、このスキル自身では使わない

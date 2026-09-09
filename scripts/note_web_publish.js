@@ -591,7 +591,7 @@
       hashtags, // string[] 省略可
       price, // number 省略可（既定 0）
       magazineKeys, // string[] 省略可
-      isPublish, // boolean 省略可（既定 false = 下書きのみ）
+      isPublish, // boolean。スキル側の既定は本公開だが、この関数で省略すると false（下書き）
     } = opts;
 
     const priceValue = price || 0;
