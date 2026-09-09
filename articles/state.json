@@ -5,9 +5,22 @@
       "title": "Claude CodeとCodex、結局どっちがいい？【2026年9月版】料金・得意分野・選び方を徹底比較",
       "topic_id": null,
       "at": "2026-09-08T08:19:09Z"
+    },
+    {
+      "title": "GPT-6 Astraの「Critical」認定、鵜呑みにしない読み方",
+      "topic_id": null,
+      "kw": "GPT-6 Astra",
+      "at": "2026-09-09T04:27:10Z"
     }
   ],
-  "drafts": [],
+  "drafts": [
+    {
+      "file": "articles/drafts/gpt6-astra-critical-cyber-2026.md",
+      "title": "GPT-6 Astraの「Critical」認定、鵜呑みにしない読み方",
+      "kw": "GPT-6 Astra",
+      "created_at": "2026-09-09T04:27:10Z"
+    }
+  ],
   "published": [
     {
       "file": "articles/published/claude-code-vs-codex-2026.md",
