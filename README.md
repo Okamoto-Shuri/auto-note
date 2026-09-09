@@ -25,6 +25,31 @@ note のネタを5個考えて（note-topic-ideas）
 articles/drafts/<slug>.md を note に下書き保存して（note-article-publish）
 ```
 
+## SEOを狙って1本の質を上げたいとき（note-article-seo-draft）
+
+`note-article-draft` より重い、検索意図分析・差別化設計・タイトル比較・章単位の自己チェック・
+100点満点の品質監査までを通しで行うスキル。時間はかかるが、狙ったキーワードでの上位表示や
+読み応えを重視したい記事向け。
+
+```
+「<狙いたいキーワード>」で note-article-seo-draft を使って記事を1本作って
+```
+
+EEAT（実績・一次情報）や記事のゴールなど、こちらで補えない項目は質問される。
+成果物は `articles/drafts/<slug>.md`（note投稿用の本文）と `articles/drafts/<slug>.seo-brief.md`
+（検索意図分析・差別化設計・品質監査などの内部資料。note には投稿しない）の2ファイル。
+既存記事のリライトにも対応（軽量モード：検索意図分析→差別化設計→品質監査のみを回す）。
+
+内部的には検索意図分析（`seo-researcher`）・差別化/構成設計（`seo-planner`）・品質監査
+（`seo-auditor`）を専任のsubagent（`.claude/agents/`）に委譲している。特に品質監査は、
+書いた本人が自分の記事を採点すると甘くなりがちなため、執筆の経緯を一切共有しない独立agentに
+完成品だけを見せて評価させる設計にしている。詳しくは `CLAUDE.md` の「スキルとagentの使い分け」
+を参照。
+
+```
+articles/published/claude-code-vs-codex-2026.md を note-article-seo-draft でリライト分析して
+```
+
 `note-article-publish` は、note.com にログイン済みの Claude-in-Chrome タブ上で
 `scripts/note_web_publish.js` を実行し、`NoteWeb.publish(...)` を呼び出す。
 既定は下書き保存のみ（`isPublish: false`）。実際に公開する場合のみ、対象記事を明示指定した上で
@@ -67,6 +92,7 @@ Claude-in-Chrome での操作を伴うため、`/schedule` での完全放置運
 ## ディレクトリ
 
 - `.claude/skills/` — 各作業を自己検証込みで実行するスキル群
+  （`note-article-seo-draft` は詳細な各Phase指示を `references/pipeline.md` に分離している）
 - `scripts/note_web_publish.js` — note 内部APIを直接叩く投稿スクリプト（Claude-in-Chromeで実行）
 - `articles/drafts/` — 生成済み・レビュー待ちの記事
 - `articles/published/` — 実際に note へ公開した記事のアーカイブ

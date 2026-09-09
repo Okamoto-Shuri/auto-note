@@ -49,19 +49,51 @@ note.com への記事投稿を Claude Code に自動化させるプロジェク�
 
 具体的な起動例は `README.md` を参照。
 
+## スキルとagentの使い分け
+
+このリポジトリの基本単位は「1つの対話セッションが呼び出すスキル」だが、以下の条件を
+**両方**満たす工程だけは、専任のsubagent（`.claude/agents/`）に切り出す。
+
+1. ユーザーとの対話（`AskUserQuestion` など）が不要で、単独で完結する
+2. 独立性・客観性、またはコンテキストの汚染防止（大量の生の調査結果を主文脈に残さない）に
+   明確な意味がある
+
+代表例が `note-article-seo-draft` のPhase7（品質監査）で、記事を書いた本人（＝執筆時の対話
+文脈）が自分の記事を採点すると、自分の判断を正当化する方向にバイアスがかかる。執筆の経緯を
+一切共有しない独立agent（`seo-auditor`）に完成品だけを見せて批判的に評価させることで、この
+バイアスを避けている。同様の理由で検索意図分析（`seo-researcher`）・差別化/構成設計
+（`seo-planner`）も専任agentに分離している。詳細は
+`.claude/skills/note-article-seo-draft/SKILL.md` の「エージェント構成」を参照。
+
+逆に、文体の一貫性が必要な工程（タイトル〜本文〜FAQ・CTAなど）や、ユーザーとの対話が
+必須の工程（要件ヒアリング、投稿の最終承認）は分割せず、スキルを呼び出しているセッション
+自身が担当する。
+
 ## ディレクトリ構成
 
 ```
+.claude/agents/
+  seo-researcher.md      note-article-seo-draft のPhase1（検索意図分析）専任agent。
+                         WebSearch/WebFetchで実際に確認した事実のみを根拠に調査する
+  seo-planner.md          note-article-seo-draft のPhase2・3（差別化設計・構成設計）専任agent
+  seo-auditor.md          note-article-seo-draft のPhase7（品質監査）専任agent。書き手の文脈を
+                         引き継がない独立した第三者として採点する（自分ではファイルを編集しない）
 .claude/skills/
-  note-topic-ideas/     トピック案をバックログに追加するスキル
-  note-article-draft/   トピックから記事を生成し自己検証するスキル
-  note-article-publish/ 承認済み下書きを note_web_publish.js 経由で note に投稿するスキル
+  note-topic-ideas/       トピック案をバックログに追加するスキル
+  note-article-draft/     トピックから記事を生成し自己検証するスキル（軽量・1ターン完結）
+  note-article-seo-draft/ 8段階SEOパイプライン（要件定義〜検索意図分析〜差別化設計〜構成設計〜
+                          タイトル/導入〜本文執筆〜実装要素〜品質監査）で記事を生成するスキル。
+                          note-article-draft より厳密な検証・裏付け重視の1本や、既存記事の
+                          リライトに使う。詳細は同ディレクトリの references/pipeline.md 参照
+  note-article-publish/   承認済み下書きを note_web_publish.js 経由で note に投稿するスキル
 scripts/
   note_web_publish.js     Claude-in-Chrome 上で実行する、note 内部APIを直接叩く投稿スクリプト
 templates/
   eyecatch_template.html  記事アイキャッチ画像のHTMLテンプレート（{{KICKER}}/{{TITLE}}を差し替えて使う）
 articles/
-  drafts/                生成した記事の Markdown（レビュー待ち）
+  drafts/                生成した記事の Markdown（レビュー待ち）。note-article-seo-draft が
+                         生成した記事には、同名で拡張子違いの `<slug>.seo-brief.md`
+                         （設計・監査資料。note には投稿しない内部資料）が併存することがある
   published/              note に投稿済みの記事のアーカイブ
   state.json              トピック履歴・投稿履歴・重複防止用の状態
 ```
