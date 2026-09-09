@@ -19,14 +19,14 @@ Phase 5 の本文、Phase 6 のFAQ・CTA文言のみ。
 **目的**: 制作に入る前に、共通変数（`{KW}` `{SUB_KW}` `{PERSONA}` `{GOAL}` `{MEDIA}` `{EEAT}`
 `{SERP}` `{INTERNAL}` `{NG}` `{MIN_CHAR}` `{MAX_CHAR}`）を確定させる。
 
-1. SKILL.md の「共通変数の決め方」表に従い、`CLAUDE.md` / `articles/state.json` /
+1. SKILL.md の「共通変数の決め方」表に従い、`AGENTS.md` / `articles/state.json` /
    引数から埋められる項目を先に埋める。
 2. それでも埋まらない項目のうち、記事の成否への影響が大きい順に**最大7問**まで
    `AskUserQuestion` で質問する。各質問には回答例を1つ添える。
 3. ユーザーが「不明」と答えた項目は、`{KW}` と `{MEDIA}` から妥当な仮説を立て、
    「仮定」と明示したうえで暫定値を置く。
 4. 推測で変数を埋めて質問を省略しない。ただし、Auto Mode の方針上、
-   `CLAUDE.md`・`state.json`・`WebSearch` から合理的に取得・推定できる項目にまで
+   `AGENTS.md`・`state.json`・`WebSearch` から合理的に取得・推定できる項目にまで
    質問を広げない（本当に他から取れないものだけを聞く）。
 
 出力: 確定済み変数一覧 / 確認した質問と回答 / 仮置きした変数とその根拠。
