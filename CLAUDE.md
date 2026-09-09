@@ -23,14 +23,25 @@ note.com への記事投稿を Claude Code に自動化させるプロジェク�
 ## 安全設計（重要）
 
 - 既定はスキル・スクリプトとも `isPublish: false` 相当（下書き保存まで）。実際の公開
-  （`isPublish: true` での実行）は、ユーザーが対象記事を個別に明示承認した場合のみ行う。
-  ループ実行中に自動判断で公開しない。
+  （`isPublish: true` での実行）を行ってよいのは次のいずれかの場合のみ。
+  1. `note-article-seo-draft` のPhase7監査（`seo-auditor` agent）が対象記事について
+     「公開可」と判定した場合。この判定自体が公開の承認を兼ねるため、改めてユーザーに
+     公開可否を確認する必要はない。
+  2. ユーザーが対象記事を個別に明示承認した場合（監査を経ていない既存ファイルなど）。
+  - `/loop`・`/schedule` などの無人実行中は、1. に該当する場合でも既定では下書き保存に
+    とどめ、本公開はユーザーが明示的に許可した場合のみ行う（自動投稿の暴走を防ぐため）。
 - 1 ループ実行あたり生成する記事数の上限を必ず決めてから回す（例: 1 日 1 本まで）。
 - 生成した記事のトピック・タイトルは `articles/state.json` の履歴と突き合わせ、重複や類似を避ける。
 - 投稿先アカウントは常にユーザー本人の note アカウントであることを前提とする。他人のアカウントや
   スクレイピング目的でこの仕組みを使わない。
 - ログインの自動化は行わない。note.com へのログインは常にユーザー本人が Claude-in-Chrome 上で
   手動で行う（note.com 側のボット検知でヘッドレス自動ログインが拒否されることを確認済み）。
+- note.com とのやり取りは、可能な限り `note_web_publish.js` による内部APIへの直接 `fetch` で
+  完結させる。Claude-in-Chrome は、ログイン済みセッションの Cookie を使わせるための実行環境
+  （`javascript_tool` でのスクリプト実行、ログイン済みタブの検出）としてのみ使い、
+  `computer`（クリック・スクリーンショット）や `find`/`file_upload` などの画面操作は、
+  内部APIでは代替できない作業（アイキャッチ画像のスクリーンショット取得など、ユーザーが
+  明示的に依頼した場合のみ）に限定する。
 - `scripts/note_web_publish.js` は CSRF対策の `XSRF-TOKEN` Cookie 以外のCookie
   （セッションCookieなど認証情報に相当するもの）には一切アクセスしない。
 - note の内部APIは非公式・リバースエンジニアリングによるものであり、note 側の仕様変更で
@@ -42,7 +53,7 @@ note.com への記事投稿を Claude Code に自動化させるプロジェク�
 
 | 種類 | 起動方法 | 停止条件 | 用途 |
 |---|---|---|---|
-| ターンベース | 通常のプロンプト / `note-article-draft` スキル呼び出し | 1 本の記事が生成・自己検証を通るまで | 1 本だけ手動で書かせたいとき |
+| ターンベース | 通常のプロンプト / `note-article-seo-draft` スキル呼び出し | 記事が生成・Phase7監査を通り、（依頼されていれば）投稿まで完了するまで | 1 本だけSEOを狙って書かせ、必要なら投稿まで任せたいとき |
 | ゴールベース | `/goal` | 目標本数に到達 or 最大試行回数 | 「今週中に3本ドラフトを作る」等 |
 | 時間ベース | `/loop` または `/schedule` | ユーザーがキャンセルするまで | 定期的にネタを1本ずつドラフトする |
 | プロアクティブ | `/schedule` の cron ルーチン | 手動停止まで | 完全自動運用（下書きまで） |
@@ -80,20 +91,23 @@ note.com への記事投稿を Claude Code に自動化させるプロジェク�
                          引き継がない独立した第三者として採点する（自分ではファイルを編集しない）
 .claude/skills/
   note-topic-ideas/       トピック案をバックログに追加するスキル
-  note-article-draft/     トピックから記事を生成し自己検証するスキル（軽量・1ターン完結）
   note-article-seo-draft/ 8段階SEOパイプライン（要件定義〜検索意図分析〜差別化設計〜構成設計〜
-                          タイトル/導入〜本文執筆〜実装要素〜品質監査）で記事を生成するスキル。
-                          note-article-draft より厳密な検証・裏付け重視の1本や、既存記事の
-                          リライトに使う。詳細は同ディレクトリの references/pipeline.md 参照
-  note-article-publish/   承認済み下書きを note_web_publish.js 経由で note に投稿するスキル
+                          タイトル/導入〜本文執筆〜実装要素〜品質監査）で記事を生成する、
+                          このリポジトリ唯一の記事生成スキル。既存記事のリライトにも使う。
+                          Phase7監査に合格した記事は、続けて note-article-publish に
+                          isPublish: true で本公開まで任せてよい。詳細は同ディレクトリの
+                          references/pipeline.md 参照
+  note-article-publish/   承認済み下書きを note_web_publish.js 経由で note に投稿するスキル。
+                          実処理はすべて内部APIへの直接fetchで完結させ、Claude-in-Chromeの
+                          画面操作（computer等）はアイキャッチ作成など明示依頼時のみ使う
 scripts/
   note_web_publish.js     Claude-in-Chrome 上で実行する、note 内部APIを直接叩く投稿スクリプト
 templates/
   eyecatch_template.html  記事アイキャッチ画像のHTMLテンプレート（{{KICKER}}/{{TITLE}}を差し替えて使う）
 articles/
-  drafts/                生成した記事の Markdown（レビュー待ち）。note-article-seo-draft が
-                         生成した記事には、同名で拡張子違いの `<slug>.seo-brief.md`
-                         （設計・監査資料。note には投稿しない内部資料）が併存することがある
+  drafts/                note-article-seo-draft が生成した記事の Markdown（`<slug>.md`）と、
+                         同名で拡張子違いの `<slug>.seo-brief.md`
+                         （設計・監査資料。note には投稿しない内部資料）が併存する
   published/              note に投稿済みの記事のアーカイブ
   state.json              トピック履歴・投稿履歴・重複防止用の状態
 ```
