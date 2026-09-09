@@ -94,7 +94,8 @@ articles/published/claude-code-vs-codex-2026.md を note-article-seo-draft で�
 
 ## ディレクトリ
 
-- `.claude/agents/` — 検索意図分析・差別化/構成設計・品質監査を担当する独立subagent
+- `.claude/agents/` — 検索意図分析・差別化/構成設計・品質監査・アイキャッチ画像生成
+  （`eyecatch-generator`）を担当する独立subagent
 - `.claude/skills/` — 各作業を自己検証込みで実行するスキル群
   （`note-article-seo-draft` は詳細な各Phase指示を `references/pipeline.md` に分離している）
 - `scripts/note_web_publish.js` — note 内部APIへの直接fetchで完結する投稿スクリプト

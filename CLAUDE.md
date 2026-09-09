@@ -79,6 +79,13 @@ note.com への記事投稿を Claude Code に自動化させるプロジェク�
 （`seo-planner`）も専任agentに分離している。詳細は
 `.claude/skills/note-article-seo-draft/SKILL.md` の「エージェント構成」を参照。
 
+分離理由がバイアス回避ではなくコンテキスト汚染防止の場合もある。`note-article-publish` の
+アイキャッチ画像生成（`eyecatch-generator`）がその例で、HTMLテンプレートの文言差し替え自体は
+単純作業だが、ArtifactでのHTML描画・Claude-in-Chromeでのスクリーンショット取得・クロップという
+一連のブラウザ操作は独立性が必要というよりも生の中間結果（スクリーンショット・タブ操作ログ等）
+が多く、投稿処理本体の文脈に残す価値が無い。完成したPNGのファイルパスだけを呼び出し元に
+返す専任agentに切り出すことで、投稿スキル側の文脈をきれいに保っている。
+
 逆に、文体の一貫性が必要な工程（タイトル〜本文〜FAQ・CTAなど）や、ユーザーとの対話が
 必須の工程（要件ヒアリング、投稿の最終承認）は分割せず、スキルを呼び出しているセッション
 自身が担当する。
@@ -92,6 +99,10 @@ note.com への記事投稿を Claude Code に自動化させるプロジェク�
   seo-planner.md          note-article-seo-draft のPhase2・3（差別化設計・構成設計）専任agent
   seo-auditor.md          note-article-seo-draft のPhase7（品質監査）専任agent。書き手の文脈を
                          引き継がない独立した第三者として採点する（自分ではファイルを編集しない）
+  eyecatch-generator.md   note-article-publish から呼ばれるアイキャッチ画像生成専任agent。
+                         templates/eyecatch_template.html への文言差し替え〜Artifact公開〜
+                         Claude-in-Chromeでのスクリーンショット/クロップまでを単独で行い、
+                         保存済みPNGのファイルパスだけを返す
 .claude/skills/
   note-topic-ideas/       トピック案をバックログに追加するスキル
   note-article-seo-draft/ 8段階SEOパイプライン（要件定義〜検索意図分析〜差別化設計〜構成設計〜
@@ -102,7 +113,8 @@ note.com への記事投稿を Claude Code に自動化させるプロジェク�
                           references/pipeline.md 参照
   note-article-publish/   承認済み下書きを note_web_publish.js 経由で note に投稿するスキル。
                           実処理はすべて内部APIへの直接fetchで完結させ、Claude-in-Chromeの
-                          画面操作（computer等）はアイキャッチ作成など明示依頼時のみ使う
+                          画面操作（computer等）は自身では行わず、アイキャッチ画像が必要な
+                          場合（明示依頼時のみ）は eyecatch-generator agentに委譲する
 scripts/
   note_web_publish.js     Claude-in-Chrome 上で実行する、note 内部APIを直接叩く投稿スクリプト
 templates/
