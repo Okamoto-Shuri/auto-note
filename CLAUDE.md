@@ -19,9 +19,8 @@ note.com への記事投稿を Claude Code に自動化させるプロジェク�
 
 - 既定はスキル・スクリプトとも `isPublish: false` 相当（下書き保存まで）。実際の公開
   （`isPublish: true` での実行）を行ってよいのは次のいずれかの場合のみ。
-  1. `note-article-seo-draft` のPhase7監査（`seo-auditor` agent）が対象記事について
-     「公開可」と判定した場合。この判定自体が公開の承認を兼ねるため、改めてユーザーに
-     公開可否を確認する必要はない。
+  1. `note-article-seo-draft` のPhase7簡易ファクトチェック（`seo-auditor` agent）を経て
+     必要箇所の修正が完了した場合。改めてユーザーに公開可否を確認する必要はない。
   2. ユーザーが対象記事を個別に明示承認した場合（監査を経ていない既存ファイルなど）。
   - `/loop`・`/schedule` などの無人実行中は、1. に該当する場合でも既定では下書き保存に
     とどめ、本公開はユーザーが明示的に許可した場合のみ行う（自動投稿の暴走を防ぐため）。
@@ -56,7 +55,7 @@ note.com への記事投稿を Claude Code に自動化させるプロジェク�
 
 | 種類 | 起動方法 | 停止条件 | 用途 |
 |---|---|---|---|
-| ターンベース | 通常のプロンプト / `note-article-seo-draft` スキル呼び出し | 記事が生成・Phase7監査を通り、（依頼されていれば）投稿まで完了するまで | 1 本だけSEOを狙って書かせ、必要なら投稿まで任せたいとき |
+| ターンベース | 通常のプロンプト / `note-article-seo-draft` スキル呼び出し | 記事が生成・Phase7ファクトチェック/修正を通り、（依頼されていれば）投稿まで完了するまで | 1 本だけSEOを狙って書かせ、必要なら投稿まで任せたいとき |
 | ゴールベース | `/goal` | 目標本数に到達 or 最大試行回数 | 「今週中に3本ドラフトを作る」等 |
 | 時間ベース | `/loop` または `/schedule` | ユーザーがキャンセルするまで | 定期的にネタを1本ずつドラフトする |
 | プロアクティブ | `/schedule` の cron ルーチン | 手動停止まで | 完全自動運用（下書きまで） |
@@ -72,10 +71,10 @@ note.com への記事投稿を Claude Code に自動化させるプロジェク�
 2. 独立性・客観性、またはコンテキストの汚染防止（大量の生の調査結果を主文脈に残さない）に
    明確な意味がある
 
-代表例が `note-article-seo-draft` のPhase7（品質監査）で、記事を書いた本人（＝執筆時の対話
-文脈）が自分の記事を採点すると、自分の判断を正当化する方向にバイアスがかかる。執筆の経緯を
-一切共有しない独立agent（`seo-auditor`）に完成品だけを見せて批判的に評価させることで、この
-バイアスを避けている。同様の理由で検索意図分析（`seo-researcher`）・差別化/構成設計
+代表例が `note-article-seo-draft` のPhase7（簡易ファクトチェック）で、記事を書いた本人（＝執筆時の対話
+文脈）が自分の記事をチェックすると見落としが生じやすい。執筆の経緯を共有しない独立agent
+（`seo-auditor`）に完成品だけを見せて客観的・簡易的にファクトチェックさせることで、
+見落としを避けている。同様の理由で検索意図分析（`seo-researcher`）・差別化/構成設計
 （`seo-planner`）も専任agentに分離している。詳細は
 `.claude/skills/note-article-seo-draft/SKILL.md` の「エージェント構成」を参照。
 
@@ -97,8 +96,8 @@ note.com への記事投稿を Claude Code に自動化させるプロジェク�
   seo-researcher.md      note-article-seo-draft のPhase1（検索意図分析）専任agent。
                          WebSearch/WebFetchで実際に確認した事実のみを根拠に調査する
   seo-planner.md          note-article-seo-draft のPhase2・3（差別化設計・構成設計）専任agent
-  seo-auditor.md          note-article-seo-draft のPhase7（品質監査）専任agent。書き手の文脈を
-                         引き継がない独立した第三者として採点する（自分ではファイルを編集しない）
+  seo-auditor.md          note-article-seo-draft のPhase7（簡易ファクトチェック）専任agent。書き手の文脈を
+                         引き継がない独立した第三者として簡易ファクトチェックを行う（自分ではファイルを編集しない）
   eyecatch-generator.md   note-article-publish から呼ばれるアイキャッチ画像生成専任agent。
                          templates/eyecatch_template.html への文言差し替え〜Artifact公開〜
                          Claude-in-Chromeでのスクリーンショット/クロップまでを単独で行い、
@@ -106,11 +105,11 @@ note.com への記事投稿を Claude Code に自動化させるプロジェク�
 .claude/skills/
   note-topic-ideas/       トピック案をバックログに追加するスキル
   note-article-seo-draft/ 8段階SEOパイプライン（要件定義〜検索意図分析〜差別化設計〜構成設計〜
-                          タイトル/導入〜本文執筆〜実装要素〜品質監査）で記事を生成する、
+                          タイトル/導入〜本文執筆〜実装要素〜簡易ファクトチェック）で記事を生成する、
                           このリポジトリ唯一の記事生成スキル。既存記事のリライトにも使う。
-                          Phase7監査に合格した記事は、続けて note-article-publish に
-                          isPublish: true で本公開まで任せてよい。詳細は同ディレクトリの
-                          references/pipeline.md 参照
+                          Phase7のファクトチェック（および必要箇所の修正）が完了した記事は、続けて
+                          note-article-publish に isPublish: true で本公開まで任せてよい。
+                          詳細は同ディレクトリの references/pipeline.md 参照
   note-article-publish/   承認済み下書きを note_web_publish.js 経由で note に投稿するスキル。
                           実処理はすべて内部APIへの直接fetchで完結させ、Claude-in-Chromeの
                           画面操作（computer等）は自身では行わず、アイキャッチ画像が必要な
@@ -135,9 +134,7 @@ articles/
 - **一次情報（EEAT）を書かない**: 自分自身の実績・経験・データなどの一次情報は、記事に
   一切書かない方針で固定する。`note-article-seo-draft` の Phase 0 でこの項目をユーザーに
   確認する必要はなく、常に「一次情報なし」として進める（一次情報前提の差別化案は選ばない）。
-- **本文の文字数は 3,000〜4,000字に固定する**（2026-09-09決定、以後変更しない）。
-  根拠: (1) note記事のSEO上位記事は平均2,500〜3,500字程度、長文が最後まで読まれやすい
-  「長文の主力ゾーン」は2,500〜4,000字とする複数の分析がある、(2) 本リポジトリの既存
-  公開記事（`articles/published/claude-code-vs-codex-2026.md`）の本文が約3,000字で、
-  比較・解説系のSEO記事として網羅性と読了率のバランスが取れている。この範囲は
-  `note-article-seo-draft` の Phase 0 で毎回ユーザーに確認せず既定値として使う。
+- **本文の文字数は 4,000〜6,000字のレンジとする**（4,000〜6,000字に固定する）。
+  この範囲（`{MIN_CHAR}`=4,000, `{MAX_CHAR}`=6,000）は、`note-article-seo-draft` の
+  Phase 0 で毎回ユーザーに確認せず既定値として使う。アウトライン設計（Phase 3）や
+  本文執筆（Phase 5）においても合計文字数が4,000〜6,000字に収まるよう配分・調整する。
