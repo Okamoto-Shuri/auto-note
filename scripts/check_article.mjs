@@ -92,14 +92,34 @@ export function checkArticle(markdown, brief = "") {
   if (/^### /m.test(withoutCode(introBlock))) add("heading_order", "H2より前にH3があります");
 
   const titleLines = briefSection(brief, "タイトル候補").split("\n").filter((l) => /^\d+\. /.test(l));
-  const titles = titleLines.map((l) => l.replace(/^\d+\. /, "").split("｜")[0].trim());
+  const titleRecords = titleLines.map((line) => {
+    const parts = line.replace(/^\d+\. /, "").split("｜").map((p) => p.trim());
+    return {
+      title: parts[0] || "",
+      type: parts.find((p) => p.startsWith("型:"))?.slice(2).trim() || "",
+      recovery: parts.find((p) => p.startsWith("回収:"))?.slice(3).trim() || "",
+    };
+  });
+  const titles = titleRecords.map((record) => record.title);
   const metas = briefSection(brief, "メタ候補").split("\n").filter((l) => /^- /.test(l)).map((l) => l.slice(2).trim());
   range("title_candidates", titles.length, 10, 10);
   titles.forEach((t, i) => range(`title_candidate:${i + 1}`, [...t].length, 28, 32));
+  if (new Set(titles).size !== titles.length) add("title_candidate_duplicate", "タイトル候補は10案すべて異なる案にしてください");
   if (!titles.includes(title)) add("selected_title", "本文タイトルが候補にありません");
+  const allowedTitleTypes = new Set(["理論反証", "逆説", "前提反転", "因果反転", "直球"]);
+  titleRecords.forEach((record, i) => {
+    if (!allowedTitleTypes.has(record.type)) add("title_type", `候補${i + 1}の型を確認してください`);
+    if (!h2.some((section) => section.title === record.recovery)) add("title_recovery", `候補${i + 1}の回収先H2が本文にありません`);
+  });
+  const titleTypeCount = (type) => titleRecords.filter((record) => record.type === type).length;
+  if (titleTypeCount("理論反証") < 2) add("title_theory_hooks", "理論反証型を2案以上作ってください");
+  if (titleTypeCount("逆説") < 2) add("title_paradox_hooks", "逆説型を2案以上作ってください");
+  if (new Set(titleRecords.map((record) => record.type).filter((type) => allowedTitleTypes.has(type))).size < 3) add("title_type_diversity", "タイトル候補に3型以上を使ってください");
+  if (titleTypeCount("直球") > 2) add("title_direct_limit", "直球型は2案までです");
+  if (titleRecords.find((record) => record.title === title)?.type === "直球") add("selected_title_hook", "採用タイトルは直球以外の反転型から選んでください");
   titleLines.forEach((line, i) => {
-    const m = line.match(/｜([0-5])\/([0-5])\/([0-5])\/([0-5])\s*[=＝]\s*(\d+)/);
-    if (!m || m.slice(1, 5).reduce((a, n) => a + Number(n), 0) !== Number(m[5])) add("title_score", `候補${i + 1}の4軸採点/合計を確認してください`);
+    const m = line.match(/｜([0-5])\/([0-5])\/([0-5])\/([0-5])\/([0-5])\s*[=＝]\s*(\d+)/);
+    if (!m || m.slice(1, 6).reduce((a, n) => a + Number(n), 0) !== Number(m[6])) add("title_score", `候補${i + 1}の5軸採点/合計を確認してください`);
   });
   range("meta_candidates", metas.length, 3, 3);
   metas.forEach((m, i) => range(`meta_length:${i + 1}`, countText(m), 120, 140));
@@ -142,7 +162,7 @@ export function checkArticle(markdown, brief = "") {
     metrics: { titleChars: [...title].length, bodyChars: countText(body), leadChars: lead, introChars: intro,
       mainH2: main.length, faqCount: faq.length, chapters: chapterMetrics, unresolvedTags: tags,
       auditRecorded: /指摘事項なし|反映済み/.test(phase7) },
-    manualChecks: ["出典・最新性・単位・前提", "文体・論理・KW配置", "段落分けと見出し前の余白", "上位3タイトルの理由", "画像目視検品", "独立監査の全指摘反映"],
+    manualChecks: ["出典・最新性・単位・前提", "文体・論理・KW配置", "段落分けと見出し前の余白", "タイトルの反転主張と本文回収", "上位3タイトルの理由", "画像目視検品", "独立監査の全指摘反映"],
   };
 }
 

@@ -3,12 +3,14 @@ import assert from "node:assert/strict";
 import { checkArticle, countText } from "../scripts/check_article.mjs";
 
 function fixture() {
-  const title = "あ".repeat(28);
+  const titles = Array.from({ length: 10 }, (_, i) => "あ".repeat(27) + String.fromCodePoint(0x2460 + i));
+  const title = titles[0];
+  const titleTypes = ["理論反証", "逆説", "前提反転", "因果反転", "理論反証", "逆説", "前提反転", "因果反転", "直球", "直球"];
   const chapters = Array.from({ length: 5 }, (_, i) => `## 本論${i}\n\n### 理由\n\n${"文".repeat(350)}\n\n### 適用\n\n${"文".repeat(350)}\n`).join("\n");
   const faqs = Array.from({ length: 4 }, (_, i) => ({ name: `質問${i}`, acceptedAnswer: { "@type": "Answer", text: "答".repeat(90) }, "@type": "Question" }));
   const faq = faqs.map((q) => `### ${q.name}\n\n${q.acceptedAnswer.text}`).join("\n\n");
   const markdown = `---\ntitle: "${title}"\nstatus: draft\n---\n\n${"導".repeat(130)}\n\n${"入".repeat(400)}\n\n<toc>\n\n${chapters}\n## よくある質問\n\n${faq}\n\n## まとめ\n\n${"結".repeat(100)}\n`;
-  const brief = `### タイトル候補\n${Array.from({ length: 10 }, (_, i) => `${i + 1}. ${title}｜5/5/5/5=20｜理由`).join("\n")}\n### メタ候補\n${Array.from({ length: 3 }, () => "- " + "説".repeat(130)).join("\n")}\n### 章配分\n${[...Array.from({ length: 5 }, (_, i) => `本論${i}`), "よくある質問", "まとめ"].map((h) => `- ${h}｜700`).join("\n")}\nFAQ数: 4\n\n\`\`\`json\n${JSON.stringify({ "@context": "https://schema.org", "@type": "FAQPage", mainEntity: faqs })}\n\`\`\`\n## Phase 7：監査\n反映済み\n`;
+  const brief = `### タイトル候補\n${titles.map((candidate, i) => `${i + 1}. ${candidate}｜型:${titleTypes[i]}｜5/5/5/5/5=25｜回収:本論${i % 5}｜理由`).join("\n")}\n### メタ候補\n${Array.from({ length: 3 }, () => "- " + "説".repeat(130)).join("\n")}\n### 章配分\n${[...Array.from({ length: 5 }, (_, i) => `本論${i}`), "よくある質問", "まとめ"].map((h) => `- ${h}｜700`).join("\n")}\nFAQ数: 4\n\n\`\`\`json\n${JSON.stringify({ "@context": "https://schema.org", "@type": "FAQPage", mainEntity: faqs })}\n\`\`\`\n## Phase 7：監査\n反映済み\n`;
   return { markdown, brief };
 }
 
@@ -29,7 +31,7 @@ test("a complete article checks cleanly, including FAQ/brief consistency", () =>
 
 test("one pass reports short title, stale FAQ count, tags and mismatched JSON-LD", () => {
   let { markdown, brief } = fixture();
-  markdown = markdown.replace('title: "' + "あ".repeat(28), 'title: "短').replace("<toc>", "<toc>\n[要確認：日付]");
+  markdown = markdown.replace(/^title: .*$/m, 'title: "短"').replace("<toc>", "<toc>\n[要確認：日付]");
   brief = brief.replace("FAQ数: 4", "FAQ数: 5").replace('"name":"質問0"', '"name":"別の質問"');
   const codes = checkArticle(markdown, brief).errors.map((e) => e.code);
   for (const c of ["title_length", "selected_title", "unresolved_tags", "faq_record", "json_ld_faq"]) assert.ok(codes.includes(c), c);
@@ -55,4 +57,18 @@ test("headings require blank source lines on both sides", () => {
   const codes = checkArticle(crowded, brief).errors.map((e) => e.code);
 
   assert.ok(codes.includes("heading_spacing"));
+});
+
+test("title candidates require contrarian variety, five-axis scores and real recovery headings", () => {
+  const { markdown, brief } = fixture();
+  const invalidBrief = brief
+    .replace(/型:理論反証/g, "型:直球")
+    .replace(/型:逆説/g, "型:直球")
+    .replace("5/5/5/5/5=25", "5/5/5/5=20")
+    .replace("回収:本論4", "回収:存在しない見出し");
+  const codes = checkArticle(markdown, invalidBrief).errors.map((error) => error.code);
+
+  for (const code of ["title_theory_hooks", "title_paradox_hooks", "title_direct_limit", "selected_title_hook", "title_score", "title_recovery"]) {
+    assert.ok(codes.includes(code), code);
+  }
 });

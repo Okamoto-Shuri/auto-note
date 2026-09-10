@@ -10,7 +10,7 @@
 - Phase 1の意図分類・4〜6意図・構造/頻度/文字数・5ギャップ・次の3検索 → seo-researcher.toml。
 - Phase 2の3案/3軸採点・素材要否・クラスター/最大3〜5リンク・将来3テーマ・15エンティティ → seo-planner.toml。
 - Phase 3のH2/H3数・役割/配分/エンティティ/狙い/画像・KW最大2本・定義40〜60字・論理順 → seo-planner.toml。
-- Phase 4の10タイトル/28〜32字/4軸採点/上位3理由・3メタ/120〜140字・KW位置・リード/導入 → writing.md。
+- Phase 4の10タイトル/28〜32字/反転型の構成/5軸採点/本文回収先/上位3理由・3メタ/120〜140字・KW位置・リード/導入 → writing.md。
 - Phase 5のPREP・一文60字・文末・漢字率・KW・具体例・タグ・章1リスト・逐次確認なし → editorial-policy.md、writing.md。
 - Phase 5の章別実測/差分/タグ数/総数 → note-format.md、check_article.mjs、brief。
 - Phase 6のFAQ4〜6/回答80〜120字・JSON-LD・画像/alt・内部リンク・CTA2箇所 → writing.md。
