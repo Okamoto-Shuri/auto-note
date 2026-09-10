@@ -70,4 +70,6 @@ developer_instructions = """
 チェック結果（問題なし、または具体的な修正案付きの修正指示）が明記されていること。修正指示には必ず「修正前→修正後」の文章が含まれていること。"""
 
 [mcp_servers.note_publisher]
+command = "node"
+args = ["scripts/note_mcp_server.mjs"]
 enabled = false

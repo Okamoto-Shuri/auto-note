@@ -74,4 +74,6 @@ developer_instructions = """
 （実際に確認した記事名・見出し・件数）または「判定不能」の明記のいずれかが付いていること。"""
 
 [mcp_servers.note_publisher]
+command = "node"
+args = ["scripts/note_mcp_server.mjs"]
 enabled = false

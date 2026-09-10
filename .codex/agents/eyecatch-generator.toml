@@ -88,4 +88,6 @@ PNG画像を一から生成し、そのファイルパスだけを返すこと�
 報告にはそのファイルパス1行のみを含め、途中経過やツール呼び出しの詳細を含めないこと。"""
 
 [mcp_servers.note_publisher]
+command = "node"
+args = ["scripts/note_mcp_server.mjs"]
 enabled = false

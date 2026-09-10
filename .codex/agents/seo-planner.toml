@@ -100,4 +100,6 @@ developer_instructions = """
 成立する内容になっていること。"""
 
 [mcp_servers.note_publisher]
+command = "node"
+args = ["scripts/note_mcp_server.mjs"]
 enabled = false
