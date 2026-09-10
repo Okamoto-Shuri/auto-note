@@ -8,6 +8,7 @@ description: 監査済みnote記事を必須アイキャッチ付きで既定は
 ## 入力と条件
 
 - 対象はdrafts内の本文1本。seo-briefは投稿しない。ルートのdocs/note-format.mdを読む。
+- 呼び出し元からartifact manifestを引き継ぐ。単独起動でmanifestがなければ`node scripts/article_run_artifacts.mjs start`を実行する。この投稿作業で新規生成したアイキャッチ等は直後に登録する。
 - 本文には実在するローカル画像が2〜3枚必要。空alt、重複参照、リモート/data URLを含む記事は保存・公開しない。
 - 本公開には同名briefのPhase 7に「指摘事項なし」または「反映済み」が必要。
 - 監査記録がない記事をユーザーが個別承認した場合だけuser_approved:trueを使える。
@@ -29,12 +30,12 @@ description: 監査済みnote記事を必須アイキャッチ付きで既定は
 4. publish_noteへdraft_path、eyecatch_path、is_publish:false、根拠のあるhashtagsを渡す。本公開が明示された場合だけis_publish:trueにし、有料記事のみpriceを指定する。
 5. 本文画像がすべてアップロード対象へ解決されたことを確認する。本公開はverification.published:trueとverification.eyecatchUrlを確認する。
    note下書きはverification.saved:trueと画像URLを確認する。検証不明は完了にしない。
-6. state・アーカイブ更新はMCP担当。URLと検証結果を報告する。
+6. state更新はMCP担当。URLと検証結果を報告する。共有manifestのローカルMarkdown・画像は呼び出し元が作業全体の完了後に削除する。単独起動で作ったmanifestは、この投稿が正常完了した時点でstatus確認後にcleanupする。
 
 ## 失敗時
 
 - 投稿開始後のエラーやdoNotRetry:trueでは再投稿しない。note ID/key、エラー、ローカル記録を報告する。
 - articles/publication-attempts/は再投稿防止記録。結果不明の記録を自動削除しない。
 - ログインや入力形式など外部書き込み前の失敗だけ原因解消後に再実行できる。
-- 公開成功・ローカル保存失敗も再投稿しない。URLを保持し障害として報告する。
+- 公開成功・ローカル保存失敗も再投稿しない。URLと作業ファイルを保持し障害として報告する。
 - MCPは3ツールのまま。削除・公開取り消し・既存記事更新を別経路で自動実行しない。

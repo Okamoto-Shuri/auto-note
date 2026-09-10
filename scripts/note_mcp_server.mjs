@@ -99,7 +99,7 @@ async function publishNote(args) {
     return textResult(
       {
         ok: true,
-        warning: "The note operation succeeded, but local archive/state update failed.",
+        warning: "The note operation succeeded, but the local state update failed.",
         doNotRetry: true,
         note: result.data,
         localError: error.message,
@@ -126,7 +126,7 @@ const tools = [
   {
     name: "publish_note",
     description:
-      "Save one audited Markdown article with 2-3 local body images to the user's own note.com account through the authenticated browser session, with a mandatory eyecatch. Defaults to a note draft; live publication requires is_publish=true. Updates articles/state.json after verified success.",
+      "Save one audited Markdown article with 2-3 local body images to the user's own note.com account through the authenticated browser session, with a mandatory eyecatch. Defaults to a note draft; live publication requires is_publish=true. Updates articles/state.json after verified success; the caller cleans run-owned local artifacts after the full task completes.",
     inputSchema: {
       type: "object",
       properties: {

@@ -7,10 +7,18 @@ description: 1本または明示された複数のnote記事を、調査・SEO�
 
 ## 開始時
 
-1. ルートのdocs/editorial-policy.md、docs/note-format.md、articles/state.jsonをまとめて読む。
-2. 新規記事では[writing.md](references/writing.md)、リライトでは[rewrite.md](references/rewrite.md)を読む。
-3. 専任agentの詳細は各.codex/agents/*.tomlを正本とする。親が通常実行で読み直さない。
-4. 下記の「件数と実行単位」で単発かバッチかを決める。各記事の本文・briefの保存先を分け、工程別時刻・呼び出し数をそれぞれのbriefへ記録する。
+1. `node scripts/article_run_artifacts.mjs start`を実行し、返却されたmanifestパスをこの作業の終了まで保持する。
+2. ルートのdocs/editorial-policy.md、docs/note-format.md、articles/state.jsonをまとめて読む。
+3. 新規記事では[writing.md](references/writing.md)、リライトでは[rewrite.md](references/rewrite.md)を読む。
+4. 専任agentの詳細は各.codex/agents/*.tomlを正本とする。親が通常実行で読み直さない。
+5. 下記の「件数と実行単位」で単発かバッチかを決める。各記事の本文・briefの保存先を分け、工程別時刻・呼び出し数をそれぞれのbriefへ記録する。
+
+## 作業ファイルの所有管理
+
+- この作業で`articles/`内へ新規作成したMarkdownと画像は、作成直後に`node scripts/article_run_artifacts.mjs register <manifest> <path...>`で登録する。本文、brief、本文画像、アイキャッチ、投稿時に生じた公開用Markdownを含む。
+- 開始前から存在したファイルは登録・上書き・削除しない。別作業が同時に作った未登録差分も削除しない。
+- 全記事の監査、投稿またはローカル完了処理、state更新、検証が終わった後、`status <manifest>`で未登録差分を確認する。今回の作業ファイルなら登録し、無関係な差分は触らない。その後、最終報告の直前に`cleanup <manifest>`を1回実行して削除結果を確認する。
+- 投稿結果不明、部分成功、state更新失敗など復旧が必要な間は作業未完了とし、manifestとローカル成果物を保持する。状態を確定してから後処理する。
 
 ## 件数と実行単位
 
@@ -56,16 +64,16 @@ agent_type:seo-auditor、fork_turns:noneへ完成本文のパス、NG、EEATだ�
 
 ## 保存・投稿
 
-- state.draftsへfile/title/kw/created_atを追加する。同じfileは重複追加しない。
+- state.draftsへfile/title/kw/created_atを追加する。同じfileは重複追加しない。後処理完了時は削除済みパスを残さずfile:nullにする。
 - 採用トピックをbacklogからtopic_historyへtopic_id/kw/title/atとともに移す。直接指定テーマも履歴へ残す。
 - バッチでもstate更新は監査・最終チェックを完了した記事ごとに行う。全件完了まで遅延させず、未完了記事をdraftsやtopic_historyへ入れない。
-- 「ローカルのみ」「投稿しない」と無人実行はここで停止する。
+- 「ローカルのみ」「投稿しない」と無人実行はMCPを呼ばず、state更新と検証後に作業ファイルを削除して停止する。
 - その他は記事ごとにnote-article-publishへ本文パスを渡し、通常はnote下書きに保存して停止する。「本公開」が明示された記事だけ本公開する。
 - 複数記事を投稿する場合も1本ずつ保存状態と画像URLを検証してから次へ進む。結果不明・部分成功・doNotRetry:trueでは後続投稿を停止し、同じ記事を再投稿しない。
-- 投稿後のstate更新・本文移動は重複実行しない。
+- 投稿後のstate更新・作業ファイル削除は重複実行しない。
 
 ## 最終報告
 
-公開/下書きURLまたは停止理由、本文・briefのパス、本文総字数と章別差分、
-本文画像2〜3枚のパス・alt・挿入先、監査指摘と修正、仮定と根拠、未確定タグ一覧（0件ならなし）を報告する。
+公開/下書きURLまたは停止理由、削除した本文・brief・画像のパス、本文総字数と章別差分、
+本文画像2〜3枚のalt・挿入先、監査指摘と修正、仮定と根拠、未確定タグ一覧（0件ならなし）を報告する。
 バッチでは記事ごとに上記を分け、完了・未完了・未着手の件数と停止理由を先に要約する。

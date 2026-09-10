@@ -1,12 +1,10 @@
-import { access, mkdir, readFile, realpath, rename, writeFile, copyFile, unlink } from "node:fs/promises";
+import { mkdir, readFile, realpath, rename, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { constants } from "node:fs";
-import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DRAFTS_ROOT = join(PROJECT_ROOT, "articles", "drafts");
-const PUBLISHED_ROOT = join(PROJECT_ROOT, "articles", "published");
 const STATE_PATH = join(PROJECT_ROOT, "articles", "state.json");
 
 function unquote(value) {
@@ -82,16 +80,6 @@ export async function preparePublication({
     throw new Error(
       `This article already has a note.com draft (${existingRemoteDraft.note_url || existingRemoteDraft.note_id}); refusing to create a duplicate`
     );
-  }
-
-  if (isPublish) {
-    const archivePath = join(PUBLISHED_ROOT, basename(articlePath));
-    try {
-      await access(archivePath);
-      throw new Error(`Published archive already exists: ${relative(PROJECT_ROOT, archivePath)}`);
-    } catch (error) {
-      if (error.code !== "ENOENT") throw error;
-    }
   }
 
   if (!Array.isArray(hashtags) || hashtags.some((value) => typeof value !== "string")) {
@@ -189,7 +177,6 @@ async function atomicJsonWrite(path, value) {
 
 export async function recordPublication(prepared, noteData, paths = {}) {
   const statePath = paths.statePath || STATE_PATH;
-  const publishedRoot = paths.publishedRoot || PUBLISHED_ROOT;
   if (!noteData.verification?.saved || !noteData.verification.eyecatchUrl ||
       (noteData.mode === "published" && !noteData.verification.published)) {
     throw new Error("Cannot record an unverified publication");
@@ -197,23 +184,12 @@ export async function recordPublication(prepared, noteData, paths = {}) {
   const state = JSON.parse(await readFile(statePath, "utf8"));
   const now = new Date().toISOString();
   const oldRelative = relative(PROJECT_ROOT, prepared.articlePath).split(sep).join("/");
-  let finalPath = prepared.articlePath;
-  let finalRelative = oldRelative;
-
-  if (noteData.mode === "published") {
-    await mkdir(publishedRoot, { recursive: true });
-    finalPath = join(publishedRoot, basename(prepared.articlePath));
-    // Keep the draft recoverable if updating state fails; never overwrite an archive.
-    await copyFile(prepared.articlePath, finalPath, constants.COPYFILE_EXCL);
-    finalRelative = relative(PROJECT_ROOT, finalPath).split(sep).join("/");
-  }
-
   const previous = (state.drafts || []).find((item) => item.file === oldRelative || item.title === prepared.metadata.title) || {};
   state.drafts = (state.drafts || []).filter((item) => item.file !== oldRelative && item.title !== prepared.metadata.title);
 
   const record = {
     ...previous,
-    file: finalRelative,
+    file: null,
     title: prepared.metadata.title,
     note_url: noteData.mode === "published" ? noteData.publicUrl : noteData.editUrl,
     note_id: noteData.noteId,
@@ -234,9 +210,5 @@ export async function recordPublication(prepared, noteData, paths = {}) {
   }
   state.last_run_at = now;
   await atomicJsonWrite(statePath, state);
-  if (noteData.mode === "published") {
-    // The source is removed only once its archive and state are both durable.
-    await unlink(prepared.articlePath);
-  }
-  return { record, archivedTo: noteData.mode === "published" ? finalPath : null };
+  return { record, archivedTo: null };
 }

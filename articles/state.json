@@ -31,7 +31,23 @@
       "at": "2026-09-10T00:27:30.589Z"
     }
   ],
-  "drafts": [],
+  "drafts": [
+    {
+      "file": "articles/drafts/bengoshi-claude-code.md",
+      "title": "弁護士のClaude Code活用、機能より先に決める入力情報",
+      "note_url": "https://editor.note.com/notes/ncbe0629267b7/edit",
+      "note_id": 179520663,
+      "note_key": "ncbe0629267b7",
+      "is_publish": false,
+      "verification": {
+        "saved": true,
+        "published": false,
+        "eyecatchUrl": "https://assets.st-note.com/production/uploads/images/312246808/rectangle_large_type_2_82fb54d564e375ea766ce4407f196998.png?fit=bounds&quality=85&width=1280",
+        "checkedAt": "2026-09-10T08:15:13.407Z"
+      },
+      "at": "2026-09-10T08:15:13.411Z"
+    }
+  ],
   "published": [
     {
       "file": "articles/published/claude-code-vs-codex-2026.md",
@@ -65,5 +81,5 @@
       "at": "2026-09-10T00:27:30.589Z"
     }
   ],
-  "last_run_at": "2026-09-10T00:27:30.589Z"
+  "last_run_at": "2026-09-10T08:15:13.411Z"
 }

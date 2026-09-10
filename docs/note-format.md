@@ -2,7 +2,7 @@
 
 ## 保存形式
 
-本文はarticles/drafts/<slug>.md、設計資料は同名<slug>.seo-brief.md。
+本文はarticles/drafts/<slug>.md、設計資料は同名<slug>.seo-brief.mdへ作業中だけ保存する。
 brief冒頭に「内部資料・noteには投稿しない」と明記する。
 
 ```yaml
@@ -24,7 +24,8 @@ created_at: "実際の作成日時をISO8601で記録"
 - 画像は説明対象の近くへ単独行で置き、altに画像の内容と本文上の役割を簡潔に書く。本文にない主張・数値を画像だけで追加しない。
 - MCPのdraft_path/eyecatch_pathはリポジトリルート基準。アイキャッチはdrafts/images内へ置く。
 - 有料記事は<pay>を単独行で1回だけ配置し、MCPのpriceを指定する。
-- 公開時の本文移動・state更新はMCP担当。frontmatterのdraftは入力形式であり、公開状態の正本はstateと取得結果。
+- state更新はMCP担当。frontmatterのdraftは入力形式であり、公開状態の正本はstateと取得結果。
+- 作業開始時のmanifestへ、この作業で新規作成した本文・brief・本文画像・アイキャッチを登録する。全工程の完了後に登録済みファイルを削除し、stateのfileはnullにする。
 
 ## 統一計数
 

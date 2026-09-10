@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, rm, writeFile, readFile, access } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, writeFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -80,38 +80,29 @@ test("publication attempts are exclusive and retain IDs after verification failu
   await assert.rejects(beginPublicationAttempt(prepared, root), /do not retry/);
 });
 
-test("only verified publication archives a draft; failures preserve local input", async (t) => {
-  const root = await mkdtemp(join(tmpdir(), "note-archive-"));
+test("only verified publication updates state and leaves cleanup to the run manifest", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "note-record-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const articlePath = join(root, "article.md");
   const statePath = join(root, "state.json");
-  const publishedRoot = join(root, "published");
   const prepared = { articlePath, metadata: { title: "test" } };
   const note = { mode: "published", noteId: 1, noteKey: "n1", publicUrl: "https://note.com/a/n/n1" };
   await writeFile(articlePath, "source");
   await writeFile(statePath, JSON.stringify({ drafts: [], published: [] }));
-  await assert.rejects(recordPublication(prepared, note, { statePath, publishedRoot }), /unverified/);
-  await access(articlePath);
+  await assert.rejects(recordPublication(prepared, note, { statePath }), /unverified/);
   note.verification = { saved: true, published: true, eyecatchUrl: "https://assets.example/a.png" };
-  await mkdir(publishedRoot);
-  await writeFile(join(publishedRoot, "article.md"), "previous");
-  await assert.rejects(recordPublication(prepared, note, { statePath, publishedRoot }), /EEXIST/);
+  await recordPublication(prepared, note, { statePath });
   assert.equal(await readFile(articlePath, "utf8"), "source");
-  assert.equal(await readFile(join(publishedRoot, "article.md"), "utf8"), "previous");
-  const nextRoot = join(root, "new-archive");
-  await recordPublication(prepared, note, { statePath, publishedRoot: nextRoot });
-  assert.equal(await readFile(join(nextRoot, "article.md"), "utf8"), "source");
-  await assert.rejects(access(articlePath), /ENOENT/);
   const state = JSON.parse(await readFile(statePath, "utf8"));
   assert.equal(state.published[0].verification.published, true);
+  assert.equal(state.published[0].file, null);
 });
 
-test("state write failure preserves the draft and archive for recovery", async (t) => {
+test("state write failure preserves the draft for recovery", async (t) => {
   const root = await mkdtemp(join(tmpdir(), "note-state-failure-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const statePath = join(root, "state.json");
   const articlePath = join(root, "article.md");
-  const publishedRoot = join(root, "published");
   await writeFile(statePath, JSON.stringify({ drafts: [], published: [] }));
   await writeFile(articlePath, "recoverable input");
   await mkdir(`${statePath}.${process.pid}.tmp`);
@@ -119,9 +110,8 @@ test("state write failure preserves the draft and archive for recovery", async (
   const note = { mode: "published", noteId: 5, noteKey: "n5", verification: {
     saved: true, published: true, eyecatchUrl: "https://assets.example/eye.png",
   } };
-  await assert.rejects(recordPublication(prepared, note, { statePath, publishedRoot }), /EISDIR/);
+  await assert.rejects(recordPublication(prepared, note, { statePath }), /EISDIR/);
   assert.equal(await readFile(articlePath, "utf8"), "recoverable input");
-  assert.equal(await readFile(join(publishedRoot, "article.md"), "utf8"), "recoverable input");
   assert.equal(JSON.parse(await readFile(statePath, "utf8")).published.length, 0);
 });
 
