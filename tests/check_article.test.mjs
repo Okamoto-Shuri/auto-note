@@ -35,6 +35,22 @@ test("a complete article checks cleanly, including FAQ/brief consistency", () =>
   assert.equal(result.metrics.bodyImageCount, 2);
 });
 
+test("toc is required exactly once after the introduction and before the first H2", () => {
+  const { markdown, brief } = fixture();
+
+  const missing = checkArticle(markdown.replace("\n<toc>\n", "\n"), brief).errors.map((error) => error.code);
+  assert.ok(missing.includes("toc_tag"));
+
+  const duplicate = checkArticle(markdown.replace("\n<toc>\n", "\n<toc>\n\n<toc>\n"), brief).errors.map((error) => error.code);
+  assert.ok(duplicate.includes("toc_tag"));
+
+  const beforeLead = checkArticle(markdown.replace("\n\n<toc>\n", "\n\n").replace("---\n\n", "---\n\n<toc>\n\n"), brief).errors.map((error) => error.code);
+  assert.ok(beforeLead.includes("toc_position"));
+
+  const afterFirstH2 = checkArticle(markdown.replace("\n<toc>\n\n## 本論0", "\n\n## 本論0\n\n<toc>"), brief).errors.map((error) => error.code);
+  assert.ok(afterFirstH2.includes("toc_position"));
+});
+
 test("body images require two or three distinct local references with alt text", () => {
   const { markdown, brief } = fixture();
   const oneImage = markdown.replace("![本論1の関係を示す図](images/body-1.png)\n\n", "");

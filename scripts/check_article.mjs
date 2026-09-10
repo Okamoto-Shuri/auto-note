@@ -73,6 +73,8 @@ export function checkArticle(markdown, brief = "") {
   const faqSections = h2.filter((s) => s.title === "よくある質問");
   const faq = sections(faqSections[0]?.content ?? "", 3);
   const firstH2 = withoutCode(body).search(/^## /m);
+  const tocLines = structure.split("\n").filter((line) => /<\/?toc>|<toc_line>/i.test(line));
+  const tocIndex = structure.search(/^<toc>\s*$/m);
   const introBlock = body.slice(0, firstH2 < 0 ? body.length : firstH2).replace(/^<toc>\s*$/gm, "").trim();
   const paragraphs = introBlock.split(/\n\s*\n/);
   const lead = countText(paragraphs[0] || "");
@@ -86,6 +88,14 @@ export function checkArticle(markdown, brief = "") {
   range("main_h2", main.length, 5, 7);
   range("faq_count", faq.length, 4, 6);
   range("body_image_count", bodyImages.length, 2, 3);
+  if (tocLines.length !== 1 || tocLines[0].trim() !== "<toc>") {
+    add("toc_tag", "<toc>は単独行で1回だけ必要です");
+  } else {
+    const beforeFirstH2 = firstH2 < 0 ? "" : structure.slice(0, firstH2).trim();
+    if (tocIndex < 0 || firstH2 < 0 || !/<toc>$/.test(beforeFirstH2)) {
+      add("toc_position", "<toc>は導入の後、最初のH2の直前に置いてください");
+    }
+  }
   if (bodyImages.some((image) => !image.alt)) add("body_image_alt", "本文画像には空でないaltが必要です");
   if (bodyImages.some((image) => /^(https?:|data:)/i.test(image.path))) add("body_image_remote", "本文画像はdrafts内のローカルファイルを参照してください");
   if (new Set(bodyImages.map((image) => image.path)).size !== bodyImages.length) add("body_image_duplicate", "本文画像は異なるファイルを2〜3枚使ってください");
@@ -176,7 +186,7 @@ export function checkArticle(markdown, brief = "") {
     metrics: { titleChars: [...title].length, bodyChars: countText(body), leadChars: lead, introChars: intro,
       mainH2: main.length, faqCount: faq.length, bodyImageCount: bodyImages.length, chapters: chapterMetrics, unresolvedTags: tags,
       auditRecorded: /指摘事項なし|反映済み/.test(phase7) },
-    manualChecks: ["出典・最新性・単位・前提", "文体・論理・KW配置", "段落分けと見出し前の余白", "タイトルの反転主張と本文回収", "上位3タイトルの理由", "画像目視検品", "独立監査の全指摘反映"],
+    manualChecks: ["出典・最新性・単位・前提", "文体・論理・KW配置", "段落分けと見出し前の余白", "導入直後の目次", "タイトルの反転主張と本文回収", "上位3タイトルの理由", "画像目視検品", "独立監査の全指摘反映"],
   };
 }
 
