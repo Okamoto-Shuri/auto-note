@@ -23,6 +23,12 @@
       "topic_id": null,
       "kw": "宇宙 AI",
       "at": "2026-09-09T13:09:16.392Z"
+    },
+    {
+      "title": "昨今の円高はなぜ？家計・仕事・新NISAへの影響を整理",
+      "topic_id": null,
+      "kw": "昨今の円高",
+      "at": "2026-09-10T00:27:30.589Z"
     }
   ],
   "drafts": [],
@@ -46,7 +52,18 @@
       "note_key": "n47ed458e4cd9",
       "is_publish": true,
       "at": "2026-09-09T13:09:16.392Z"
+    },
+    {
+      "file": "articles/published/yen-appreciation-2026.md",
+      "title": "昨今の円高はなぜ？家計・仕事・新NISAへの影響を整理",
+      "kw": "昨今の円高",
+      "created_at": "2026-09-10T00:00:00+09:00",
+      "note_url": "https://note.com/leal_rabbit26/n/nac5433795d12",
+      "note_id": 179452882,
+      "note_key": "nac5433795d12",
+      "is_publish": true,
+      "at": "2026-09-10T00:27:30.589Z"
     }
   ],
-  "last_run_at": "2026-09-09T13:09:16.392Z"
+  "last_run_at": "2026-09-10T00:27:30.589Z"
 }
