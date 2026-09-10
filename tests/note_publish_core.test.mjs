@@ -46,6 +46,8 @@ test("preparePublication accepts an audited article with its eyecatch", async (t
   assert.equal(prepared.options.isPublish, true);
   assert.equal(prepared.options.eyecatch.mime, "image/png");
   assert.ok(prepared.options.eyecatch.base64.length > 0);
+  const defaultPrepared = await preparePublication({ draftPath, eyecatchPath });
+  assert.equal(defaultPrepared.options.isPublish, false);
   await writeFile(briefPath, "## Phase 7\n\n未実施\n\n## 別の工程\n反映済み\n");
   await assert.rejects(preparePublication({ draftPath, eyecatchPath, isPublish: true }), /Phase 7/);
   await writeFile(briefPath, "## Phase 7\n指摘事項なし\n");

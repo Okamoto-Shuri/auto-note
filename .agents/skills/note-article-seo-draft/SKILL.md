@@ -48,7 +48,7 @@ agent_type:seo-auditor、fork_turns:noneへ完成本文のパス、NG、EEATだ�
 - state.draftsへfile/title/kw/created_atを追加する。同じfileは重複追加しない。
 - 採用トピックをbacklogからtopic_historyへtopic_id/kw/title/atとともに移す。直接指定テーマも履歴へ残す。
 - 「ローカルのみ」「投稿しない」と無人実行はここで停止する。
-- その他はnote-article-publishへ本文パスを渡す。通常は本公開、「下書きだけ」はnote下書き。
+- その他はnote-article-publishへ本文パスを渡し、通常はnote下書きに保存して停止する。「本公開」が明示された場合だけ本公開する。
 - 投稿後のstate更新・本文移動は重複実行しない。
 
 ## 最終報告

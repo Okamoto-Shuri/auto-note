@@ -53,7 +53,7 @@ function mimeFor(path) {
 export async function preparePublication({
   draftPath,
   eyecatchPath,
-  isPublish = true,
+  isPublish = false,
   userApproved = false,
   hashtags = [],
   price = 0,

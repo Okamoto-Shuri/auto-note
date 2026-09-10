@@ -73,7 +73,7 @@ async function publishNote(args) {
   const prepared = await preparePublication({
     draftPath: args.draft_path,
     eyecatchPath: args.eyecatch_path,
-    isPublish: args.is_publish ?? true,
+    isPublish: args.is_publish ?? false,
     userApproved: args.user_approved ?? false,
     hashtags: args.hashtags || [],
     price: args.price || 0,
@@ -126,14 +126,14 @@ const tools = [
   {
     name: "publish_note",
     description:
-      "Publish one audited Markdown draft to the user's own note.com account through the authenticated browser session, with a mandatory eyecatch. Defaults to live publication and updates articles/state.json plus the local archive after success.",
+      "Save one audited Markdown article to the user's own note.com account through the authenticated browser session, with a mandatory eyecatch. Defaults to a note draft; live publication requires is_publish=true. Updates articles/state.json after verified success.",
     inputSchema: {
       type: "object",
       properties: {
         draft_path: { type: "string", description: "Path under articles/drafts ending in .md (not .seo-brief.md)." },
         eyecatch_path: { type: "string", description: "PNG/JPEG/GIF/WebP path under articles/drafts/images." },
-        is_publish: { type: "boolean", default: true, description: "true for live publication; false for note draft save." },
-        user_approved: { type: "boolean", default: false, description: "Set true only when the user explicitly approved this article; otherwise a Phase 7 brief is required." },
+        is_publish: { type: "boolean", default: false, description: "false for note draft save (default); true only for explicitly requested live publication." },
+        user_approved: { type: "boolean", default: false, description: "For live publication only: set true when the user explicitly approved an article without a Phase 7 brief." },
         hashtags: { type: "array", items: { type: "string" }, default: [] },
         price: { type: "number", minimum: 0, default: 0 },
         magazine_keys: { type: "array", items: { type: "string" }, default: [] },
@@ -152,7 +152,7 @@ async function handle(request) {
       capabilities: { tools: { listChanged: false } },
       serverInfo: SERVER_INFO,
       instructions:
-        "Use open_note_login only when note_session_status reports no authenticated session. publish_note is limited to one local draft and requires an eyecatch. Never automate login credentials. Live publishing requires Phase 7 evidence or explicit user approval.",
+        "Use open_note_login only when note_session_status reports no authenticated session. publish_note is limited to one local draft and requires an eyecatch. Default to note draft save. Use live publishing only when explicitly requested; it requires Phase 7 evidence or explicit user approval. Never automate login credentials.",
     };
   }
   if (request.method === "ping") return {};

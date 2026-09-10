@@ -49,4 +49,6 @@ test("MCP server exposes only the three scoped tools", async () => {
     response.result.tools.map((tool) => tool.name),
     ["note_session_status", "open_note_login", "publish_note"]
   );
+  const publishTool = response.result.tools.find((tool) => tool.name === "publish_note");
+  assert.equal(publishTool.inputSchema.properties.is_publish.default, false);
 });

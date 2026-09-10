@@ -17,7 +17,7 @@
 - Phase 7の独立性・原資料照合・具体的修正・未解決事項・採点/定例再監査なし → seo-auditor.toml、draft skill。
 - note非対応形式・frontmatter・画像パス・有料区切り → note-format.md、投稿前の検証。
 - 1280×670画像・デザイン・正確な文字・目視検品・再生成上限2回 → eyecatch-generator.toml。
-- 本公開既定・ローカル/リモート下書き・本人ログイン・3ツール・状態確認 → AGENTS、publish skill。
+- note下書き既定・明示時のみ本公開・ローカル保存・本人ログイン・3ツール・状態確認 → AGENTS、publish skill。
 - 既存リライトのPhase 1→2→7と無断上書き禁止 → rewrite.md。
 - 最終報告のURL/ファイル/監査/仮定/残存タグ/字数 → draft skill。
 
