@@ -9,7 +9,7 @@ import {
   publishInTarget,
   startBrowser,
 } from "./note_cdp.mjs";
-import { preparePublication, PROJECT_ROOT, recordPublication } from "./note_publish_core.mjs";
+import { beginPublicationAttempt, finishPublicationAttempt, preparePublication, PROJECT_ROOT, recordPublication } from "./note_publish_core.mjs";
 
 const NOTE_WEB_SCRIPT = join(PROJECT_ROOT, "scripts", "note_web_publish.js");
 const SERVER_INFO = { name: "auto-note-publisher", version: "1.0.0" };
@@ -79,8 +79,18 @@ async function publishNote(args) {
     price: args.price || 0,
     magazineKeys: args.magazine_keys || [],
   });
-  const result = await publishInTarget(target, NOTE_WEB_SCRIPT, prepared.options);
-  if (!result?.ok) return textResult({ code: "NOTE_API_ERROR", error: result?.error || result }, true);
+  const attempt = await beginPublicationAttempt(prepared);
+  let result;
+  try { result = await publishInTarget(target, NOTE_WEB_SCRIPT, prepared.options); }
+  catch (error) { result = { ok: false, error: { type: "TransportInterrupted", message: error.message } }; }
+  result ||= { ok: false, error: { type: "MissingPublishResult" } };
+  try { await finishPublicationAttempt(attempt, result); }
+  catch (error) {
+    return textResult({ ok: false, code: "NOTE_JOURNAL_ERROR", doNotRetry: true,
+      note: result.data || result.note, attemptPath: attempt.path, error: error.message }, true);
+  }
+  if (!result.ok) return textResult({ ok: false, code: "NOTE_API_ERROR", doNotRetry: true,
+    note: result.note, attemptPath: attempt.path, error: result.error }, true);
 
   let local;
   try {
@@ -93,10 +103,11 @@ async function publishNote(args) {
         doNotRetry: true,
         note: result.data,
         localError: error.message,
+        attemptPath: attempt.path,
       }
     );
   }
-  return textResult({ ok: true, note: result.data, local: local.record });
+  return textResult({ ok: true, note: result.data, local: local.record, attemptPath: attempt.path });
 }
 
 const tools = [

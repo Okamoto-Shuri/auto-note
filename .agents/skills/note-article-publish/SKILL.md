@@ -1,62 +1,39 @@
 ---
 name: note-article-publish
-description: articles/drafts/ の承認済み・監査済み記事を、専用Chromeセッションと note_publisher MCPでnote.comへ下書き保存または本公開する。アイキャッチ生成・添付とstate.json更新まで行う。
+description: 監査済みnote記事を必須アイキャッチ付きで下書き保存・本公開し、公開状態と画像の反映を検証する。
 ---
 
 # note-article-publish
 
-`note_publisher` MCPを使い、ユーザー本人が手動ログインした専用Chromeプロファイル内で
-`scripts/note_web_publish.js` を実行する。noteとの書き込みは内部APIへの直接`fetch`で完結し、
-エディタのクリック操作やログイン自動化は行わない。
+## 入力と条件
 
-## 前提と公開条件
+- 対象はdrafts内の本文1本。seo-briefは投稿しない。ルートのdocs/note-format.mdを読む。
+- 本公開には同名briefのPhase 7に「指摘事項なし」または「反映済み」が必要。
+- 監査記録がない記事をユーザーが個別承認した場合だけuser_approved:trueを使える。
+- 通常はis_publish:true。「下書きだけ」はfalse。「投稿しない」「ローカルのみ」と無人実行はMCPを呼ばず停止する。
+- 既存noteを持つ本文は新規投稿しない。復旧時だけ[復旧メモ](references/eyecatch-recovery.md)を読む。
 
-- 1回につき1記事だけ処理する。
-- 対象は`articles/drafts/`内の本文Markdownとする。`*.seo-brief.md`は投稿しない。
-- アイキャッチは必須。未生成ならサブエージェント起動ツールで
-  `agent_type: "eyecatch-generator"` と `fork_turns: "none"` を指定して委譲し、
-  タイトル・KICKER・雰囲気・出力先だけを渡して1280×670pxのPNGを
-  `articles/drafts/images/`へ生成する。既に対象記事用の完成済み画像がある場合は再生成しない。
-- 公開指定がなければ`is_publish: true`。ユーザーが下書きのみを指定した場合、または
-  `/loop`・`/schedule`などの無人実行では`is_publish: false`。
-- 本公開には、同名SEO briefのPhase 7に「指摘事項なし」または「反映済み」の記録が必要。
-  監査記録がない既存記事は、ユーザーが個別承認した場合だけ`user_approved: true`を渡せる。
-- 有料記事では本文の`<pay>`が1行のみ・1回のみであることを確認し、`price`を指定する。
+## アイキャッチ
+
+完成済み画像がなければagent_type:eyecatch-generator、fork_turns:noneへ
+表示タイトル・KICKER・雰囲気・drafts/images内の出力先を渡す。
+返却PNGが1280×670pxであることを確認する。画像担当が文字・構図を目視検品する。
+<!-- 品質維持：画像の必須添付・目視検品は計数やアップロード成功判定では代替しない。 -->
 
 ## 実行
 
-1. `note_session_status`で専用セッションを確認する。
-2. ブラウザ未起動または未ログインなら`open_note_login`を呼ぶ。未ログインの場合だけ、開いた
-   Chromeでユーザー本人に手動ログインしてもらい、完了後に再確認する。認証情報は尋ねない。
-3. 条件を満たしたら`publish_note`へ本文パス、アイキャッチパス、公開区分を渡す。タグ等は記事設計に
-   根拠がある場合だけ渡す。1〜2回を超えて自動リトライしない。
-4. 成功後は、公開記事の取得結果で`status: published`（または`is_published: true`）と
-   `eyecatch`のURLが両方存在することを確認する。投稿APIのHTTP成功だけで完了扱いにしない。
-5. 戻り値のURLを報告する。MCPが成功時に`articles/state.json`を更新し、本公開なら本文を
-   `articles/published/`へ移動するため、同じ更新を手作業で重複実行しない。
+1. `node scripts/check_article.mjs <本文パス>` の最終結果と監査反映を確認する。未確定タグは解消する。
+2. note_session_statusを呼ぶ。未起動・未認証時だけopen_note_loginを呼ぶ。
+3. loggedIn:trueなら続行。それ以外は本人の手動ログインを待ちstatusを再確認する。
+4. publish_noteへdraft_path、eyecatch_path、is_publish、根拠のあるhashtagsを渡す。有料記事のみpriceを指定する。
+5. 本公開はverification.published:trueとverification.eyecatchUrlを確認する。
+   note下書きはverification.saved:trueと画像URLを確認する。検証不明は完了にしない。
+6. state・アーカイブ更新はMCP担当。URLと検証結果を報告する。
 
-呼び出し例:
+## 失敗時
 
-```json
-{
-  "draft_path": "articles/drafts/example.md",
-  "eyecatch_path": "articles/drafts/images/eyecatch-example.png",
-  "is_publish": true,
-  "hashtags": ["AI"]
-}
-```
-
-## 境界
-
-- MCPは下書き保存・本公開だけを公開し、削除、公開取り消し、いいね、フォロー、コメント、
-  ログイン操作は実装しない。
-- セッションCookieをMCPプロセスへ抽出しない。ページ内スクリプトがCSRF用`XSRF-TOKEN`だけを読み、
-  ブラウザ自身の認証済み`fetch`を使う。
-- 内部API変更や連続エラーが疑われる場合は停止し、エラーをそのまま報告する。
-
-## 投稿後の修復
-
-公開結果に画像がない、またはユーザーが同じ記事を下書きへ戻した場合は、重複記事を新規作成しない。
-既存の`note_key`と`note_id`を`articles/state.json`および記事取得APIから確定し、既存ノートへ
-アイキャッチを再アップロードしてから同じノートを更新・再公開する。具体的な既知仕様と確認項目は、
-この復旧が必要な場合に限り[references/eyecatch-recovery.md](references/eyecatch-recovery.md)を読む。
+- 投稿開始後のエラーやdoNotRetry:trueでは再投稿しない。note ID/key、エラー、ローカル記録を報告する。
+- articles/publication-attempts/は再投稿防止記録。結果不明の記録を自動削除しない。
+- ログインや入力形式など外部書き込み前の失敗だけ原因解消後に再実行できる。
+- 公開成功・ローカル保存失敗も再投稿しない。URLを保持し障害として報告する。
+- MCPは3ツールのまま。削除・公開取り消し・既存記事更新を別経路で自動実行しない。

@@ -437,7 +437,7 @@
         image_keys: imageKeys || [],
       }
     );
-    if (!result.ok) {
+    if (!result.ok || result.json?.error) {
       return { ok: false, error: { type: "DraftSaveFailed", status: result.status, detail: result.text } };
     }
     return { ok: true };
@@ -448,7 +448,7 @@
       `https://note.com/api/v1/text_notes/draft_save?id=${noteId}&is_temp_saved=true`,
       { body: combinedHtml, name: title, index: true }
     );
-    if (!result.ok) {
+    if (!result.ok || result.json?.error) {
       return { ok: false, error: { type: "TempDraftSaveFailed", status: result.status, detail: result.text } };
     }
     return { ok: true };
@@ -461,7 +461,7 @@
       if (v !== null && v !== undefined) payload[k] = v;
     }
     const result = await apiPut(`https://note.com/api/v1/text_notes/${noteData.id}`, payload);
-    if (!result.ok) {
+    if (!result.ok || result.json?.error) {
       return { ok: false, error: { type: "PublishFailed", status: result.status, detail: result.text } };
     }
     return { ok: true };
@@ -588,7 +588,7 @@
 
   // ---- トップレベルの publish ----
 
-  async function publish(opts) {
+  async function publishSteps(opts, progress) {
     const {
       title,
       markdown,
@@ -605,6 +605,7 @@
     const magazineKeyList = magazineKeys || [];
 
     // 1) 画像を先にアップロードして参照解決マップを作る
+    if (images?.length) progress.started = true;
     const uploaded = await uploadAllImages(images);
     if (!uploaded.ok) return uploaded;
     const imageMap = uploaded.data;
@@ -628,11 +629,18 @@
     }
 
     // 5) ノート作成
+    progress.started = true;
     const created = await createNoteSkeleton();
     if (!created.ok) return created;
     const noteData = created.data;
     const noteId = noteData.id;
     const noteKey = noteData.key;
+    progress.note = {
+      noteId, noteKey,
+      publicUrl: `https://note.com/${userUrlname}/n/${noteKey}`,
+      editUrl: `https://editor.note.com/notes/${noteKey}/edit`,
+    };
+    if (!noteId || !noteKey) return { ok: false, error: { type: "InvalidCreatedNote" } };
 
     // 6) アイキャッチ
     if (eyecatch) {
@@ -644,6 +652,8 @@
     if (!isPublish) {
       const draft = await saveDraft(noteId, title, combinedHtml, imageKeys);
       if (!draft.ok) return draft;
+      const checked = await verifySavedNote(noteId, noteKey, false);
+      if (!checked.ok) return checked;
       return {
         ok: true,
         data: {
@@ -651,6 +661,7 @@
           noteId,
           noteKey,
           editUrl: `https://editor.note.com/notes/${noteKey}/edit`,
+          verification: checked.data,
         },
       };
     }
@@ -684,6 +695,8 @@
 
     const final = await finalizePublish(noteData, overrides);
     if (!final.ok) return final;
+    const checked = await verifySavedNote(noteId, noteKey, true);
+    if (!checked.ok) return checked;
 
     return {
       ok: true,
@@ -694,8 +707,38 @@
         publicUrl: `https://note.com/${userUrlname}/n/${noteKey}`,
         editUrl: `https://editor.note.com/notes/${noteKey}/edit`,
         hasPay: priceValue > 0,
+        verification: checked.data,
       },
     };
+  }
+
+  async function verifySavedNote(noteId, noteKey, isPublish) {
+    const result = await getNote(noteKey, isPublish ? {} : { draft: true });
+    if (!result.ok) return result;
+    const data = result.data;
+    const identityMatches = String(data.id) === String(noteId) && data.key === noteKey;
+    const published = data.status === "published" || data.is_published === true;
+    const draft = data.status === "draft" || data.is_published === false;
+    const eyecatchUrl = typeof data.eyecatch === "string" ? data.eyecatch : data.eyecatch?.url;
+    const validImage = typeof eyecatchUrl === "string" && /^https?:\/\//.test(eyecatchUrl);
+    if (!identityMatches || (isPublish ? !published || draft : !draft || published) || !validImage) {
+      return { ok: false, error: { type: "NoteVerificationFailed", detail: {
+        identityMatches, status: data.status, is_published: data.is_published, eyecatchUrl,
+      } } };
+    }
+    return { ok: true, data: { saved: true, published, eyecatchUrl, checkedAt: new Date().toISOString() } };
+  }
+
+  async function publish(opts) {
+    const progress = { started: false, note: null };
+    try {
+      const result = await publishSteps(opts, progress);
+      if (!result.ok) return { ...result, doNotRetry: progress.started, note: progress.note };
+      return result;
+    } catch (error) {
+      return { ok: false, doNotRetry: progress.started, note: progress.note,
+        error: { type: "NoteOperationInterrupted", message: error.message } };
+    }
   }
 
   window.NoteWeb = {

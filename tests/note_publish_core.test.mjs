@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, writeFile, readFile, access } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { parseArticle, preparePublication, PROJECT_ROOT } from "../scripts/note_publish_core.mjs";
+import { beginPublicationAttempt, finishPublicationAttempt, parseArticle, preparePublication, PROJECT_ROOT, recordPublication } from "../scripts/note_publish_core.mjs";
 
 test("parseArticle extracts frontmatter and body", () => {
   const parsed = parseArticle('---\ntitle: "宇宙とAI"\nstatus: "draft"\n---\n\n本文です。\n');
@@ -34,13 +35,85 @@ test("preparePublication accepts an audited article with its eyecatch", async (t
   });
   await writeFile(draftPath, '---\ntitle: "テスト専用記事"\nstatus: "draft"\n---\n\n本文です。\n');
   await writeFile(briefPath, "## Phase 7\n\n指摘事項なし\n");
-  await writeFile(eyecatchPath, Buffer.from("89504e470d0a1a0a", "hex"));
+  const png = Buffer.alloc(24);
+  Buffer.from("89504e470d0a1a0a", "hex").copy(png);
+  png.writeUInt32BE(1280, 16);
+  png.writeUInt32BE(670, 20);
+  await writeFile(eyecatchPath, png);
 
   const prepared = await preparePublication({ draftPath, eyecatchPath, isPublish: true });
   assert.equal(prepared.options.title, "テスト専用記事");
   assert.equal(prepared.options.isPublish, true);
   assert.equal(prepared.options.eyecatch.mime, "image/png");
   assert.ok(prepared.options.eyecatch.base64.length > 0);
+  await writeFile(briefPath, "## Phase 7\n\n未実施\n\n## 別の工程\n反映済み\n");
+  await assert.rejects(preparePublication({ draftPath, eyecatchPath, isPublish: true }), /Phase 7/);
+  await writeFile(briefPath, "## Phase 7\n指摘事項なし\n");
+  await writeFile(draftPath, '---\ntitle: x\nstatus: draft\n---\n[要出典：未確認]\n');
+  await assert.rejects(preparePublication({ draftPath, eyecatchPath, isPublish: false }), /Unresolved/);
+  await writeFile(draftPath, '---\ntitle: x\nstatus: draft\n---\n本文\n');
+  png.writeUInt32BE(100, 16);
+  await writeFile(eyecatchPath, png);
+  await assert.rejects(preparePublication({ draftPath, eyecatchPath }), /1280x670/);
+});
+
+test("publication attempts are exclusive and retain IDs after verification failure", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "note-journal-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const prepared = { articlePath: join(root, "article.md"), metadata: { title: "test" } };
+  const attempt = await beginPublicationAttempt(prepared, root);
+  await assert.rejects(beginPublicationAttempt(prepared, root), /do not retry/);
+  await finishPublicationAttempt(attempt, { ok: false, note: { noteId: 12, noteKey: "n12" }, error: "missing image" });
+  const saved = JSON.parse(await readFile(attempt.path, "utf8"));
+  assert.equal(saved.note.noteId, 12);
+  assert.equal(saved.doNotRetry, true);
+  assert.equal(saved.status, "needs_review");
+  await assert.rejects(beginPublicationAttempt(prepared, root), /do not retry/);
+});
+
+test("only verified publication archives a draft; failures preserve local input", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "note-archive-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const articlePath = join(root, "article.md");
+  const statePath = join(root, "state.json");
+  const publishedRoot = join(root, "published");
+  const prepared = { articlePath, metadata: { title: "test" } };
+  const note = { mode: "published", noteId: 1, noteKey: "n1", publicUrl: "https://note.com/a/n/n1" };
+  await writeFile(articlePath, "source");
+  await writeFile(statePath, JSON.stringify({ drafts: [], published: [] }));
+  await assert.rejects(recordPublication(prepared, note, { statePath, publishedRoot }), /unverified/);
+  await access(articlePath);
+  note.verification = { saved: true, published: true, eyecatchUrl: "https://assets.example/a.png" };
+  await mkdir(publishedRoot);
+  await writeFile(join(publishedRoot, "article.md"), "previous");
+  await assert.rejects(recordPublication(prepared, note, { statePath, publishedRoot }), /EEXIST/);
+  assert.equal(await readFile(articlePath, "utf8"), "source");
+  assert.equal(await readFile(join(publishedRoot, "article.md"), "utf8"), "previous");
+  const nextRoot = join(root, "new-archive");
+  await recordPublication(prepared, note, { statePath, publishedRoot: nextRoot });
+  assert.equal(await readFile(join(nextRoot, "article.md"), "utf8"), "source");
+  await assert.rejects(access(articlePath), /ENOENT/);
+  const state = JSON.parse(await readFile(statePath, "utf8"));
+  assert.equal(state.published[0].verification.published, true);
+});
+
+test("state write failure preserves the draft and archive for recovery", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "note-state-failure-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const statePath = join(root, "state.json");
+  const articlePath = join(root, "article.md");
+  const publishedRoot = join(root, "published");
+  await writeFile(statePath, JSON.stringify({ drafts: [], published: [] }));
+  await writeFile(articlePath, "recoverable input");
+  await mkdir(`${statePath}.${process.pid}.tmp`);
+  const prepared = { articlePath, metadata: { title: "test" } };
+  const note = { mode: "published", noteId: 5, noteKey: "n5", verification: {
+    saved: true, published: true, eyecatchUrl: "https://assets.example/eye.png",
+  } };
+  await assert.rejects(recordPublication(prepared, note, { statePath, publishedRoot }), /EISDIR/);
+  assert.equal(await readFile(articlePath, "utf8"), "recoverable input");
+  assert.equal(await readFile(join(publishedRoot, "article.md"), "utf8"), "recoverable input");
+  assert.equal(JSON.parse(await readFile(statePath, "utf8")).published.length, 0);
 });
 
 test("preparePublication rejects files outside articles/drafts", async () => {

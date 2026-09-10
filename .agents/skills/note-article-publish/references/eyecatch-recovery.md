@@ -1,23 +1,18 @@
-# アイキャッチ欠落時の復旧メモ
+# 投稿結果不明・画像欠落
 
-## 2026-09-09に確認した内部APIの挙動
+## 判定と停止
 
-- `POST /api/v1/image_upload/note_eyecatch`のフォームには、実画像と一致する
-  `width=1280`、`height=670`、既存の`note_id`を渡す。
-- noteは画像検証エラーでもHTTP 201を返すことがある。HTTPステータスだけでは成功と判定せず、
-  JSON本文に`error`がないことと`data.url`が存在することを必ず確認する。
-- `POST /api/v2/notes/{note_key}/change_status`は公開記事を下書きへ戻す用途であり、
-  下書きの再公開には使わない。再公開は既存`note_id`に対する記事更新PUTで行う。
-- 復旧時は新しいノートの骨組みを作らない。`articles/state.json`の記録と
-  `GET /api/v3/notes/{note_key}`の結果を突き合わせ、同一記事のIDを使う。
+- verificationの公開状態・画像URLを確認できなければ完了と報告しない。
+- doNotRetry:true、note_idを持つstate、publication-attemptsの記録がある記事は再投稿しない。
+- note_id/note_key、公開/編集URL、確認できた状態・画像・エラーを照合して報告する。
+- 現行MCPは既存記事の更新・再公開・削除を提供しない。自動復旧できると案内しない。
+- 本人がnoteエディタで同じ記事を確認し、画像添付・公開を行う。新しい記事を作らない。
+- ローカル記録の訂正は、リモート状態を確定し、訂正依頼がある場合だけ行う。
 
-## 最短の確認順序
+## 保守時の既知仕様（2026-09-09確認）
 
-1. 記事取得APIで対象が下書きであり、`eyecatch`が空であることを確認する。
-2. 既存`note_id`へ1280×670pxの画像をアップロードし、レスポンスの`data.url`を確認する。
-3. 記事取得APIをもう一度呼び、`eyecatch`にURLが設定されたことを確認する。
-4. 同じ`note_id`を記事更新PUTで公開する。本文・タグ・価格など既存値を保持する。
-5. 最後に記事取得APIで`status: published`または`is_published: true`、かつ
-   `eyecatch` URLありを確認して完了とする。
-
-途中でレスポンス形式が異なる場合は、推測で別エンドポイントを連打せず停止する。
+- note_eyecatchは実寸1280×670px、width/heightも同値、既存note_idを使用する。
+- HTTP 201でもJSONのerrorがあれば失敗。data.urlが必要。
+- GET /api/v3/notes/{note_key}で公開状態とeyecatchを確認する。
+- change_statusは公開記事の下書き戻し用途。再公開に使わない。
+- 既存記事更新の保守ではID・本文・タグ・価格を保持する。現行MCPへは接続しない。

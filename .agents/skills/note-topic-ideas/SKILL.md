@@ -1,27 +1,12 @@
 ---
 name: note-topic-ideas
-description: note 記事のトピック案を考え、articles/state.json の topic_backlog に重複なく追加する。ループの最初のステップとして、また単独でも使う。
+description: note記事のトピック案を考え、stateのバックログへ重複なく追加する。
 ---
 
 # note-topic-ideas
 
-note 記事のネタ切れを防ぐためのバックログ管理スキル。
-
-## 手順
-
-1. `articles/state.json` を読み、`topic_backlog`（未着手）と `topic_history`（過去に書いた/検討済み）を確認する。
-2. `AGENTS.md` の「記事のスタイルガイド」セクションを読み、扱ってよい/避けるべきトピックの方針を確認する。
-   方針が未設定の場合は、ユーザーに依頼された分野・引数で渡されたテーマを優先する。
-3. 新しいトピック案を 3〜5 件考える。各案は以下を満たすこと。
-   - `topic_history` および現在の `topic_backlog` と内容が重複・酷似していない
-   - 1 記事として成立する具体性がある（広すぎる/狭すぎない）
-4. `articles/state.json` の `topic_backlog` に追記する。各要素は次の形式。
-   ```json
-   { "id": "<slug>", "title": "<仮タイトル>", "note": "<補足>", "added_at": "<ISO8601>" }
-   ```
-5. 追加した案を一覧でユーザーに報告する。
-
-## 停止条件
-
-- 追加後の `topic_backlog` が指定件数（既定 5 件、引数で指定可）に達したら終了する。
-- 新規に思いつく案が尽きた場合はその旨を報告して終了する（無理に埋めない）。
+1. articles/state.jsonとルートのdocs/editorial-policy.mdを読む。
+2. 指定分野を優先し、具体的で1記事に成立するテーマを3〜5件考える。
+3. topic_historyとtopic_backlogの重複・酷似を除く。既定のbacklog上限5件（指定があれば優先）を超えない。
+4. topic_backlogへ `{ "id": "<slug>", "title": "<仮タイトル>", "note": "<補足>", "added_at": "<ISO8601>" }` を追加する。
+5. 追加案を報告する。候補が尽きたら無理に埋めない。

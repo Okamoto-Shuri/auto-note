@@ -1,4 +1,6 @@
-import { access, mkdir, readFile, realpath, rename, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, realpath, rename, writeFile, copyFile, unlink } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { constants } from "node:fs";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -61,6 +63,15 @@ export async function preparePublication({
   if (articlePath.endsWith(".seo-brief.md")) throw new Error("SEO brief files cannot be published");
   const eyecatch = await safeFile(eyecatchPath, join(DRAFTS_ROOT, "images"));
   const { metadata, body } = parseArticle(await readFile(articlePath, "utf8"));
+  if (/\[(要データ|要確認|要出典)(?:[：:][^\]]*)?\]/.test(body)) {
+    throw new Error("Unresolved editorial tags must be resolved before saving or publishing");
+  }
+  const imageBytes = await readFile(eyecatch);
+  if (extname(eyecatch).toLowerCase() === ".png" &&
+      (imageBytes.length < 24 || imageBytes.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a" ||
+       imageBytes.readUInt32BE(16) !== 1280 || imageBytes.readUInt32BE(20) !== 670)) {
+    throw new Error("PNG eyecatch must be 1280x670");
+  }
 
   const state = JSON.parse(await readFile(STATE_PATH, "utf8"));
   const articleRelative = relative(PROJECT_ROOT, articlePath).split(sep).join("/");
@@ -99,7 +110,8 @@ export async function preparePublication({
     } catch {
       // A user-approved article may omit a brief; unapproved articles may not.
     }
-    const hasPhase7 = /##\s*Phase\s*7[：:]?[\s\S]*(指摘事項なし|反映済み)/i.test(brief);
+    const auditSection = brief.match(/^##\s*Phase\s*7(?=[：:\s]|$)[^\n]*\n([\s\S]*?)(?=^## |$(?![\s\S]))/im)?.[1] || "";
+    const hasPhase7 = /指摘事項なし|反映済み/.test(auditSection);
     if (!hasPhase7) {
       throw new Error("Live publication requires a completed Phase 7 audit or userApproved=true");
     }
@@ -126,7 +138,7 @@ export async function preparePublication({
       title: metadata.title,
       markdown: body,
       images,
-      eyecatch: { base64: await readFile(eyecatch, "base64"), mime: mimeFor(eyecatch) },
+      eyecatch: { base64: imageBytes.toString("base64"), mime: mimeFor(eyecatch) },
       hashtags,
       price,
       magazineKeys,
@@ -135,23 +147,54 @@ export async function preparePublication({
   };
 }
 
+// Exclusive, durable journal: a CDP timeout may hide a successful remote write.
+// Never remove this automatically or retry a write just because its reply was lost.
+export async function beginPublicationAttempt(prepared, root = join(PROJECT_ROOT, "articles", "publication-attempts")) {
+  await mkdir(root, { recursive: true });
+  const key = createHash("sha256").update(prepared.articlePath).digest("hex");
+  const path = join(root, `${key}.json`);
+  const record = { file: relative(PROJECT_ROOT, prepared.articlePath), title: prepared.metadata.title,
+    startedAt: new Date().toISOString(), status: "started", doNotRetry: true };
+  try { await writeFile(path, `${JSON.stringify(record, null, 2)}\n`, { flag: "wx", mode: 0o600 }); }
+  catch (error) {
+    if (error.code === "EEXIST") throw new Error(`Publication attempt already exists; do not retry: ${path}`);
+    throw error;
+  }
+  return { path, record };
+}
+
+export async function finishPublicationAttempt(attempt, result) {
+  const record = { ...attempt.record, finishedAt: new Date().toISOString(),
+    status: result.ok ? "verified" : "needs_review", note: result.data || result.note || null,
+    error: result.error || null, doNotRetry: true };
+  await atomicJsonWrite(attempt.path, record);
+  return record;
+}
+
 async function atomicJsonWrite(path, value) {
   const temporary = `${path}.${process.pid}.tmp`;
   await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
   await rename(temporary, path);
 }
 
-export async function recordPublication(prepared, noteData) {
-  const state = JSON.parse(await readFile(STATE_PATH, "utf8"));
+export async function recordPublication(prepared, noteData, paths = {}) {
+  const statePath = paths.statePath || STATE_PATH;
+  const publishedRoot = paths.publishedRoot || PUBLISHED_ROOT;
+  if (!noteData.verification?.saved || !noteData.verification.eyecatchUrl ||
+      (noteData.mode === "published" && !noteData.verification.published)) {
+    throw new Error("Cannot record an unverified publication");
+  }
+  const state = JSON.parse(await readFile(statePath, "utf8"));
   const now = new Date().toISOString();
   const oldRelative = relative(PROJECT_ROOT, prepared.articlePath).split(sep).join("/");
   let finalPath = prepared.articlePath;
   let finalRelative = oldRelative;
 
   if (noteData.mode === "published") {
-    await mkdir(PUBLISHED_ROOT, { recursive: true });
-    finalPath = join(PUBLISHED_ROOT, basename(prepared.articlePath));
-    await rename(prepared.articlePath, finalPath);
+    await mkdir(publishedRoot, { recursive: true });
+    finalPath = join(publishedRoot, basename(prepared.articlePath));
+    // Keep the draft recoverable if updating state fails; never overwrite an archive.
+    await copyFile(prepared.articlePath, finalPath, constants.COPYFILE_EXCL);
     finalRelative = relative(PROJECT_ROOT, finalPath).split(sep).join("/");
   }
 
@@ -166,6 +209,7 @@ export async function recordPublication(prepared, noteData) {
     note_id: noteData.noteId,
     note_key: noteData.noteKey,
     is_publish: noteData.mode === "published",
+    verification: noteData.verification,
     at: now,
   };
 
@@ -179,6 +223,10 @@ export async function recordPublication(prepared, noteData) {
     state.drafts.push(record);
   }
   state.last_run_at = now;
-  await atomicJsonWrite(STATE_PATH, state);
+  await atomicJsonWrite(statePath, state);
+  if (noteData.mode === "published") {
+    // The source is removed only once its archive and state are both durable.
+    await unlink(prepared.articlePath);
+  }
   return { record, archivedTo: noteData.mode === "published" ? finalPath : null };
 }
