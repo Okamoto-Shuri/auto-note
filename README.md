@@ -28,6 +28,7 @@ CSRF用XSRF-TOKEN以外のCookieを読み出さない。非公式API変更で失
 件数指定がなければ1本だけ作る。複数テーマ・件数・backlog範囲が明示された場合だけ複数作る。
 複数でも記事ごとに調査・設計・執筆・監査を完了し、専任agentと投稿は1つずつ実行する。
 本文はarticles/drafts/<slug>.md、内部資料は同名<slug>.seo-brief.md。
+各記事には理解を助ける本文画像2〜3枚を生成・目視検品して挿入する。アイキャッチはこれとは別に必須。
 note下書き保存時は本文をdraftsに保持してstateを更新する。本公開成功時だけ本文をpublishedへ移す。
 
 ## 無人実行
@@ -38,7 +39,7 @@ note下書き保存時は本文をdraftsに保持してstateを更新する。�
 
 ## 検証・障害対応
 
-- node scripts/check_article.mjs <記事パス>：計数・SEOの機械チェック。文章の質・事実は独立監査で確認する。
+- node scripts/check_article.mjs <記事パス>：計数・SEO・本文画像2〜3枚とファイル実在の機械チェック。文章の質・事実・画像内容は独立監査と目視で確認する。
 - npm test：ローカルの回帰テスト。noteへの投稿は行わない。
 - 投稿ツール内で記事を再取得し、保存/公開状態と画像URLを検証する。
 - doNotRetry:trueや結果不明では再投稿しない。publication-attemptsの記録と返却IDを確認する。

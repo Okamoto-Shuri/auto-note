@@ -8,6 +8,7 @@ description: 監査済みnote記事を必須アイキャッチ付きで既定は
 ## 入力と条件
 
 - 対象はdrafts内の本文1本。seo-briefは投稿しない。ルートのdocs/note-format.mdを読む。
+- 本文には実在するローカル画像が2〜3枚必要。空alt、重複参照、リモート/data URLを含む記事は保存・公開しない。
 - 本公開には同名briefのPhase 7に「指摘事項なし」または「反映済み」が必要。
 - 監査記録がない記事をユーザーが個別承認した場合だけuser_approved:trueを使える。
 - 通常はis_publish:falseでnote下書きに保存する。ユーザーが「本公開」を明示した場合だけtrueにする。「投稿しない」「ローカルのみ」と無人実行はMCPを呼ばず停止する。
@@ -22,11 +23,11 @@ description: 監査済みnote記事を必須アイキャッチ付きで既定は
 
 ## 実行
 
-1. `node scripts/check_article.mjs <本文パス>` の最終結果と監査反映を確認する。未確定タグは解消する。
+1. `node scripts/check_article.mjs <本文パス>` の最終結果、本文画像2〜3枚の実在、監査反映を確認する。未確定タグは解消する。
 2. note_session_statusを呼ぶ。未起動・未認証時だけopen_note_loginを呼ぶ。
 3. loggedIn:trueなら続行。それ以外は本人の手動ログインを待ちstatusを再確認する。
 4. publish_noteへdraft_path、eyecatch_path、is_publish:false、根拠のあるhashtagsを渡す。本公開が明示された場合だけis_publish:trueにし、有料記事のみpriceを指定する。
-5. 本公開はverification.published:trueとverification.eyecatchUrlを確認する。
+5. 本文画像がすべてアップロード対象へ解決されたことを確認する。本公開はverification.published:trueとverification.eyecatchUrlを確認する。
    note下書きはverification.saved:trueと画像URLを確認する。検証不明は完了にしない。
 6. state・アーカイブ更新はMCP担当。URLと検証結果を報告する。
 

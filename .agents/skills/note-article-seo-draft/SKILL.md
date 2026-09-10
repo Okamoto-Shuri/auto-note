@@ -41,6 +41,8 @@ Phase 1の結果とKW/SUB_KW/EEAT/MEDIA/GOAL/INTERNAL/MIN_CHAR/MAX_CHARを渡す
 ## Phase 4〜6：執筆
 
 親がwriting.mdに従いタイトルからFAQ・CTAまで通して執筆する。
+本文の確定後、記事ごとにagent_type:article-visual-generator、fork_turns:noneへ本文パスとbriefの画像仕様2〜3件を渡す。
+返却された全画像を目視検品し、説明対象の近くへalt付きMarkdownで挿入する。画像生成と検品が完了するまで記事を完成扱いにしない。
 本文・briefを保存し、note-format.mdの一括チェックで計数・形式の指摘をまとめて修正する。
 各章の実測と配分差、未確定タグ残数、全章完了・本文総字数をbriefへ記録する。
 <!-- 品質維持：10タイトル比較・3メタ・JSON-LDも残す。note非対応でも勝手に省略しない。 -->
@@ -65,5 +67,5 @@ agent_type:seo-auditor、fork_turns:noneへ完成本文のパス、NG、EEATだ�
 ## 最終報告
 
 公開/下書きURLまたは停止理由、本文・briefのパス、本文総字数と章別差分、
-監査指摘と修正、仮定と根拠、未確定タグ一覧（0件ならなし）を報告する。
+本文画像2〜3枚のパス・alt・挿入先、監査指摘と修正、仮定と根拠、未確定タグ一覧（0件ならなし）を報告する。
 バッチでは記事ごとに上記を分け、完了・未完了・未着手の件数と停止理由を先に要約する。

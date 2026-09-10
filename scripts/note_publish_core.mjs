@@ -118,10 +118,20 @@ export async function preparePublication({
   }
 
   const images = [];
-  const imagePattern = /!\[[^\]]*\]\(([^)]+)\)/g;
+  const imagePattern = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  const bodyImageMatches = [...body.matchAll(imagePattern)];
+  if (bodyImageMatches.length < 2 || bodyImageMatches.length > 3) {
+    throw new Error(`Article must contain 2 to 3 body images, got ${bodyImageMatches.length}`);
+  }
+  if (bodyImageMatches.some((match) => !match[1].trim())) {
+    throw new Error("Body images must have non-empty alt text");
+  }
+  if (new Set(bodyImageMatches.map((match) => match[2].trim())).size !== bodyImageMatches.length) {
+    throw new Error("Body images must reference 2 to 3 distinct files");
+  }
   const seen = new Set();
-  for (const match of body.matchAll(imagePattern)) {
-    const reference = match[1].trim();
+  for (const match of bodyImageMatches) {
+    const reference = match[2].trim();
     if (/^(https?:|data:)/i.test(reference)) {
       throw new Error(`Remote/data image references are not supported: ${reference}`);
     }

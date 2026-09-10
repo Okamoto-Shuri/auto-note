@@ -126,7 +126,7 @@ const tools = [
   {
     name: "publish_note",
     description:
-      "Save one audited Markdown article to the user's own note.com account through the authenticated browser session, with a mandatory eyecatch. Defaults to a note draft; live publication requires is_publish=true. Updates articles/state.json after verified success.",
+      "Save one audited Markdown article with 2-3 local body images to the user's own note.com account through the authenticated browser session, with a mandatory eyecatch. Defaults to a note draft; live publication requires is_publish=true. Updates articles/state.json after verified success.",
     inputSchema: {
       type: "object",
       properties: {
@@ -152,7 +152,7 @@ async function handle(request) {
       capabilities: { tools: { listChanged: false } },
       serverInfo: SERVER_INFO,
       instructions:
-        "Use open_note_login only when note_session_status reports no authenticated session. publish_note is limited to one local draft and requires an eyecatch. Default to note draft save. Use live publishing only when explicitly requested; it requires Phase 7 evidence or explicit user approval. Never automate login credentials.",
+        "Use open_note_login only when note_session_status reports no authenticated session. publish_note is limited to one local draft and requires 2-3 distinct local body images plus an eyecatch. Default to note draft save. Use live publishing only when explicitly requested; it requires Phase 7 evidence or explicit user approval. Never automate login credentials.",
     };
   }
   if (request.method === "ping") return {};

@@ -26,26 +26,30 @@ test("preparePublication accepts an audited article with its eyecatch", async (t
   await mkdir(imagesRoot, { recursive: true });
   const fixtureDir = await mkdtemp(join(draftsRoot, ".test-publication-"));
   const fixtureName = `.test-eyecatch-${process.pid}-${Date.now()}.png`;
+  const bodyNames = [0, 1].map((index) => `.test-body-${process.pid}-${Date.now()}-${index}.png`);
   const draftPath = join(fixtureDir, "article.md");
   const briefPath = join(fixtureDir, "article.seo-brief.md");
   const eyecatchPath = join(imagesRoot, fixtureName);
   t.after(async () => {
     await rm(fixtureDir, { recursive: true, force: true });
     await rm(eyecatchPath, { force: true });
+    await Promise.all(bodyNames.map((name) => rm(join(imagesRoot, name), { force: true })));
   });
-  await writeFile(draftPath, '---\ntitle: "テスト専用記事"\nstatus: "draft"\n---\n\n本文です。\n');
+  await writeFile(draftPath, `---\ntitle: "テスト専用記事"\nstatus: "draft"\n---\n\n本文です。\n\n![説明図1](../images/${bodyNames[0]})\n\n![説明図2](../images/${bodyNames[1]})\n`);
   await writeFile(briefPath, "## Phase 7\n\n指摘事項なし\n");
   const png = Buffer.alloc(24);
   Buffer.from("89504e470d0a1a0a", "hex").copy(png);
   png.writeUInt32BE(1280, 16);
   png.writeUInt32BE(670, 20);
   await writeFile(eyecatchPath, png);
+  await Promise.all(bodyNames.map((name) => writeFile(join(imagesRoot, name), png)));
 
   const prepared = await preparePublication({ draftPath, eyecatchPath, isPublish: true });
   assert.equal(prepared.options.title, "テスト専用記事");
   assert.equal(prepared.options.isPublish, true);
   assert.equal(prepared.options.eyecatch.mime, "image/png");
   assert.ok(prepared.options.eyecatch.base64.length > 0);
+  assert.equal(prepared.options.images.length, 2);
   const defaultPrepared = await preparePublication({ draftPath, eyecatchPath });
   assert.equal(defaultPrepared.options.isPublish, false);
   await writeFile(briefPath, "## Phase 7\n\n未実施\n\n## 別の工程\n反映済み\n");
@@ -57,6 +61,9 @@ test("preparePublication accepts an audited article with its eyecatch", async (t
   png.writeUInt32BE(100, 16);
   await writeFile(eyecatchPath, png);
   await assert.rejects(preparePublication({ draftPath, eyecatchPath }), /1280x670/);
+  png.writeUInt32BE(1280, 16);
+  await writeFile(eyecatchPath, png);
+  await assert.rejects(preparePublication({ draftPath, eyecatchPath }), /2 to 3 body images/);
 });
 
 test("publication attempts are exclusive and retain IDs after verification failure", async (t) => {

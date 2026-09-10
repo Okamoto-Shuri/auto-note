@@ -1,6 +1,8 @@
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { readFile, realpath } from "node:fs/promises";
+import { dirname, extname, isAbsolute, relative, resolve, sep } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+const ARTICLE_DRAFTS_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../articles/drafts");
 
 // Matches the supported note Markdown subset, not arbitrary CommonMark extensions.
 export function visibleText(markdown) {
@@ -25,6 +27,13 @@ function withoutCode(markdown) {
     if (/^\s*```/.test(line)) { inCode = !inCode; return " ".repeat(line.length); }
     return inCode ? " ".repeat(line.length) : line;
   }).join("\n");
+}
+
+export function extractBodyImages(markdown) {
+  return [...withoutCode(markdown).matchAll(/!\[([^\]]*)\]\(([^)]+)\)/g)].map((match) => ({
+    alt: match[1].trim(),
+    path: match[2].trim(),
+  }));
 }
 
 function sections(markdown, level) {
@@ -69,12 +78,17 @@ export function checkArticle(markdown, brief = "") {
   const lead = countText(paragraphs[0] || "");
   const intro = countText(paragraphs.slice(1).join("\n\n"));
   const tags = [...body.matchAll(/\[(要データ|要確認|要出典)(?:[：:][^\]]*)?\]/g)].map((m) => m[0]);
+  const bodyImages = extractBodyImages(body);
   range("body_length", countText(body), 4000, 6000);
   range("title_length", [...title].length, 28, 32);
   range("lead_length", lead, 120, 160);
   range("intro_length", intro, 350, 450);
   range("main_h2", main.length, 5, 7);
   range("faq_count", faq.length, 4, 6);
+  range("body_image_count", bodyImages.length, 2, 3);
+  if (bodyImages.some((image) => !image.alt)) add("body_image_alt", "本文画像には空でないaltが必要です");
+  if (bodyImages.some((image) => /^(https?:|data:)/i.test(image.path))) add("body_image_remote", "本文画像はdrafts内のローカルファイルを参照してください");
+  if (new Set(bodyImages.map((image) => image.path)).size !== bodyImages.length) add("body_image_duplicate", "本文画像は異なるファイルを2〜3枚使ってください");
   if (faqSections.length !== 1) add("faq_section", "よくある質問のH2は1つ必要です");
   if (tags.length) add("unresolved_tags", tags.join("、"));
   if (/^#{1}(?: |$)|^#{4,}\s/m.test(structure)) add("heading_level", "見出しはH2/H3までです");
@@ -160,10 +174,32 @@ export function checkArticle(markdown, brief = "") {
   return {
     ok: errors.length === 0, errors,
     metrics: { titleChars: [...title].length, bodyChars: countText(body), leadChars: lead, introChars: intro,
-      mainH2: main.length, faqCount: faq.length, chapters: chapterMetrics, unresolvedTags: tags,
+      mainH2: main.length, faqCount: faq.length, bodyImageCount: bodyImages.length, chapters: chapterMetrics, unresolvedTags: tags,
       auditRecorded: /指摘事項なし|反映済み/.test(phase7) },
     manualChecks: ["出典・最新性・単位・前提", "文体・論理・KW配置", "段落分けと見出し前の余白", "タイトルの反転主張と本文回収", "上位3タイトルの理由", "画像目視検品", "独立監査の全指摘反映"],
   };
+}
+
+export async function checkBodyImageFiles(articlePath, markdown) {
+  const errors = [];
+  const draftsRoot = await realpath(ARTICLE_DRAFTS_ROOT);
+  for (const image of extractBodyImages(markdown)) {
+    if (/^(https?:|data:)/i.test(image.path)) continue;
+    const candidate = isAbsolute(image.path) ? resolve(image.path) : resolve(dirname(articlePath), image.path);
+    try {
+      const actual = await realpath(candidate);
+      const rel = relative(draftsRoot, actual);
+      if (rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
+        errors.push({ code: "body_image_path", message: `本文画像はarticles/drafts内へ保存してください: ${image.path}` });
+      }
+      if (![".png", ".jpg", ".jpeg", ".gif", ".webp"].includes(extname(actual).toLowerCase())) {
+        errors.push({ code: "body_image_format", message: `非対応の本文画像形式です: ${image.path}` });
+      }
+    } catch {
+      errors.push({ code: "body_image_missing", message: `本文画像が見つかりません: ${image.path}` });
+    }
+  }
+  return errors;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
@@ -175,6 +211,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     try { brief = await readFile(path.replace(/\.md$/, ".seo-brief.md"), "utf8"); }
     catch (e) { if (e.code !== "ENOENT") throw e; }
     const result = checkArticle(markdown, brief);
+    result.errors.push(...await checkBodyImageFiles(resolve(path), markdown));
+    result.ok = result.errors.length === 0;
     console.log(JSON.stringify(result, null, 2));
     process.exitCode = result.ok ? 0 : 1;
   } catch (error) {
