@@ -48,3 +48,11 @@ test("audit marker in another section does not count", () => {
   const result = checkArticle(markdown, brief.replace("反映済み", "未実施\n## 別の章\n反映済み"));
   assert.equal(result.metrics.auditRecorded, false);
 });
+
+test("headings require blank source lines on both sides", () => {
+  const { markdown, brief } = fixture();
+  const crowded = markdown.replace("## 本論1\n\n### 理由", "## 本論1\n### 理由");
+  const codes = checkArticle(crowded, brief).errors.map((e) => e.code);
+
+  assert.ok(codes.includes("heading_spacing"));
+});

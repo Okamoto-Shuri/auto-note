@@ -247,9 +247,18 @@
 
       const uid = crypto.randomUUID();
       const content = parseInline(stripped);
-      if (stripped.startsWith("### ")) {
+      const isH3 = stripped.startsWith("### ");
+      const isH2 = stripped.startsWith("# ") || stripped.startsWith("## ");
+
+      // noteでは通常のMarkdown空行が表示上の余白にならないため、
+      // 見出しの前に空の段落を置いて本文との間隔を明示的に作る。
+      if ((isH2 || isH3) && currentParts.length > 0) {
+        const spacerUid = crypto.randomUUID();
+        currentParts.push(`<p name="${spacerUid}" id="${spacerUid}"><br></p>`);
+      }
+      if (isH3) {
         currentParts.push(`<h3 name="${uid}" id="${uid}">${content.replace(/^#+\s*/, "")}</h3>`);
-      } else if (stripped.startsWith("# ") || stripped.startsWith("## ")) {
+      } else if (isH2) {
         currentParts.push(`<h2 name="${uid}" id="${uid}">${content.replace(/^#+\s*/, "")}</h2>`);
       } else if (stripped.startsWith("> ")) {
         currentParts.push(`<blockquote name="${uid}" id="${uid}">${content.replace(/^>\s*/, "")}</blockquote>`);

@@ -70,6 +70,26 @@ test("uploadEyecatch requires the uploaded asset URL", async () => {
   assert.equal(result.error.type, "EyecatchUploadResultInvalid");
 });
 
+test("markdownToHtml inserts a physical spacer before headings after body text", () => {
+  const noteWeb = loadNoteWeb(async () => jsonResponse(200, {}));
+  const result = noteWeb.markdownToHtml(
+    "導入文です。\n\n## 大見出し\n本文です。\n\n### 小見出し\n続きです。",
+    {}
+  );
+
+  assert.equal(result.ok, true);
+  assert.match(result.data.combinedHtml, /<p[^>]*>導入文です。<\/p><p[^>]*><br><\/p><h2[^>]*>大見出し<\/h2>/);
+  assert.match(result.data.combinedHtml, /<p[^>]*>本文です。<\/p><p[^>]*><br><\/p><h3[^>]*>小見出し<\/h3>/);
+});
+
+test("markdownToHtml does not add a spacer before an opening heading", () => {
+  const noteWeb = loadNoteWeb(async () => jsonResponse(200, {}));
+  const result = noteWeb.markdownToHtml("## 最初の見出し\n本文です。", {});
+
+  assert.equal(result.ok, true);
+  assert.match(result.data.combinedHtml, /^<h2[^>]*>最初の見出し<\/h2>/);
+});
+
 function publishFixture({ remote = {}, throwAt, rejectPut = false } = {}) {
   const calls = [];
   const noteWeb = loadNoteWeb(async (url, options = {}) => {

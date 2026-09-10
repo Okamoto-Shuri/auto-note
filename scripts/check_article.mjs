@@ -78,6 +78,11 @@ export function checkArticle(markdown, brief = "") {
   if (faqSections.length !== 1) add("faq_section", "よくある質問のH2は1つ必要です");
   if (tags.length) add("unresolved_tags", tags.join("、"));
   if (/^#{1}(?: |$)|^#{4,}\s/m.test(structure)) add("heading_level", "見出しはH2/H3までです");
+  const structureLines = structure.split("\n");
+  const crowdedHeading = structureLines.findIndex((line, i) => /^#{2,3} /.test(line) &&
+    ((i > 0 && structureLines[i - 1].trim() !== "") ||
+      (i + 1 < structureLines.length && structureLines[i + 1].trim() !== "")));
+  if (crowdedHeading >= 0) add("heading_spacing", `${crowdedHeading + 1}行目の見出し前後に空行が必要です`);
   if (/^\s*\|?.+\|.*\n\s*\|?\s*:?-{3,}/m.test(structure)) add("table", "本文の表は非対応です");
   if ((body.match(/^\s*```/gm) || []).length % 2) add("code_fence", "コードブロックが閉じていません");
   const payLines = structure.split("\n").filter((l) => /<\/?pay>|<pay_line>/i.test(l));
@@ -137,7 +142,7 @@ export function checkArticle(markdown, brief = "") {
     metrics: { titleChars: [...title].length, bodyChars: countText(body), leadChars: lead, introChars: intro,
       mainH2: main.length, faqCount: faq.length, chapters: chapterMetrics, unresolvedTags: tags,
       auditRecorded: /指摘事項なし|反映済み/.test(phase7) },
-    manualChecks: ["出典・最新性・単位・前提", "文体・論理・KW配置", "上位3タイトルの理由", "画像目視検品", "独立監査の全指摘反映"],
+    manualChecks: ["出典・最新性・単位・前提", "文体・論理・KW配置", "段落分けと見出し前の余白", "上位3タイトルの理由", "画像目視検品", "独立監査の全指摘反映"],
   };
 }
 
