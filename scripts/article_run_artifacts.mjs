@@ -121,13 +121,23 @@ export async function cleanupArtifactRun(manifestPath, { articlesRoot = ARTICLES
   return { deleted, unregistered };
 }
 
+// For a run that ends without a verified note.com save/publish (local-only, "don't post",
+// unattended runs): ends manifest tracking without deleting any owned article/image file, so
+// completed local work survives even though nothing exists on note.com to recover it from.
+export async function closeArtifactRun(manifestPath, { articlesRoot = ARTICLES_ROOT } = {}) {
+  const { unregistered, registered } = await inspectArtifactRun(manifestPath, { articlesRoot });
+  await unlink(manifestPath);
+  return { kept: registered, unregistered };
+}
+
 async function main() {
   const [command, manifestPath, ...paths] = process.argv.slice(2);
   if (command === "start" && !manifestPath) return startArtifactRun();
   if (command === "register" && manifestPath && paths.length) return registerArtifacts(manifestPath, paths);
   if (command === "status" && manifestPath && !paths.length) return inspectArtifactRun(manifestPath);
   if (command === "cleanup" && manifestPath && !paths.length) return cleanupArtifactRun(manifestPath);
-  throw new Error("Usage: article_run_artifacts.mjs start | register <manifest> <path...> | status <manifest> | cleanup <manifest>");
+  if (command === "close" && manifestPath && !paths.length) return closeArtifactRun(manifestPath);
+  throw new Error("Usage: article_run_artifacts.mjs start | register <manifest> <path...> | status <manifest> | cleanup <manifest> | close <manifest>");
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

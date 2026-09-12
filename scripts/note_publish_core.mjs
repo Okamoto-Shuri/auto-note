@@ -147,24 +147,42 @@ export async function preparePublication({
 
 // Exclusive, durable journal: a CDP timeout may hide a successful remote write.
 // Never remove this automatically or retry a write just because its reply was lost.
+// The key is derived from content + publish intent (not the file path), so rewriting
+// the same path as a different article never collides with an unrelated prior attempt,
+// and re-saving identical content under a new path is still recognized as the same attempt.
 export async function beginPublicationAttempt(prepared, root = join(PROJECT_ROOT, "articles", "publication-attempts")) {
   await mkdir(root, { recursive: true });
-  const key = createHash("sha256").update(prepared.articlePath).digest("hex");
+  const contentKey = `${prepared.metadata.title}\n${prepared.options?.markdown ?? ""}\n${prepared.options?.isPublish ? "publish" : "draft"}`;
+  const key = createHash("sha256").update(contentKey).digest("hex");
   const path = join(root, `${key}.json`);
   const record = { file: relative(PROJECT_ROOT, prepared.articlePath), title: prepared.metadata.title,
     startedAt: new Date().toISOString(), status: "started", doNotRetry: true };
-  try { await writeFile(path, `${JSON.stringify(record, null, 2)}\n`, { flag: "wx", mode: 0o600 }); }
-  catch (error) {
-    if (error.code === "EEXIST") throw new Error(`Publication attempt already exists; do not retry: ${path}`);
-    throw error;
+  try {
+    await writeFile(path, `${JSON.stringify(record, null, 2)}\n`, { flag: "wx", mode: 0o600 });
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+    // Only reopen the slot when a prior attempt is confirmed terminal (finishPublicationAttempt
+    // ran) and confirmed safe to retry (never reached note's API). An in-flight or ambiguous
+    // record keeps blocking, since we cannot tell whether it silently reached note.
+    let previous = null;
+    try { previous = JSON.parse(await readFile(path, "utf8")); } catch { /* corrupt/unreadable: stay blocked */ }
+    if (!previous || previous.status === "started" || previous.doNotRetry !== false) {
+      throw new Error(`Publication attempt already exists; do not retry: ${path}`);
+    }
+    await atomicJsonWrite(path, record);
   }
   return { path, record };
 }
 
 export async function finishPublicationAttempt(attempt, result) {
+  // result.doNotRetry === false is an explicit, positive signal (set by the browser-side
+  // publish() in note_web_publish.js via progress.started) that nothing reached note's API
+  // yet. Any other value (true, or absent as with TransportInterrupted/NOTE_JOURNAL_ERROR)
+  // stays non-retryable, since we cannot rule out a write that succeeded remotely.
+  const doNotRetry = result.doNotRetry !== false;
   const record = { ...attempt.record, finishedAt: new Date().toISOString(),
     status: result.ok ? "verified" : "needs_review", note: result.data || result.note || null,
-    error: result.error || null, doNotRetry: true };
+    error: result.error || null, doNotRetry };
   await atomicJsonWrite(attempt.path, record);
   return record;
 }

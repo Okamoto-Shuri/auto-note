@@ -12,7 +12,7 @@ description: 監査済みnote記事を必須アイキャッチ付きで既定は
 - 本文には実在するローカル画像が2〜3枚必要。空alt、重複参照、リモート/data URLを含む記事は保存・公開しない。
 - 本公開には同名briefのPhase 7に「指摘事項なし」または「反映済み」が必要。
 - 監査記録がない記事をユーザーが個別承認した場合だけuser_approved:trueを使える。
-- 通常はis_publish:falseでnote下書きに保存する。ユーザーが「本公開」を明示した場合だけtrueにする。「投稿しない」「ローカルのみ」と無人実行はMCPを呼ばず停止する。
+- 通常はis_publish:falseでnote下書きに保存する。ユーザーが「本公開」を明示した場合だけtrueにする。「投稿しない」「ローカルのみ」と無人実行はMCPを呼ばず停止する。単独起動で作ったmanifestは`cleanup`ではなく`close <manifest>`を呼び、作業ファイルを残したままmanifestだけ確定する。
 - 既存noteを持つ本文は新規投稿しない。復旧時だけ[復旧メモ](references/eyecatch-recovery.md)を読む。
 
 ## アイキャッチ
@@ -27,16 +27,17 @@ description: 監査済みnote記事を必須アイキャッチ付きで既定は
 
 1. `node scripts/check_article.mjs <本文パス>` の最終結果、本文画像2〜3枚の実在、監査反映を確認する。未確定タグは解消する。
 2. note_session_statusを呼ぶ。未起動・未認証時だけopen_note_loginを呼ぶ。
-3. loggedIn:trueなら続行。それ以外は本人の手動ログインを待ちstatusを再確認する。
+3. loggedIn:trueなら続行。それ以外は本人の手動ログインを待ちstatusを再確認する。再確認は最大3回まで。それでも未ログインならタイムアウトとして停止し、ログイン待ちである旨を報告する。
 4. publish_noteへdraft_path、eyecatch_path、is_publish:false、根拠のあるhashtagsを渡す。本公開が明示された場合だけis_publish:trueにし、有料記事のみpriceを指定する。
 5. 本文画像がすべてアップロード対象へ解決されたことを確認する。本公開はverification.published:trueとverification.eyecatchUrlを確認する。
    note下書きはverification.saved:trueと画像URLを確認する。検証不明は完了にしない。
-6. state更新はMCP担当。URLと検証結果を報告する。共有manifestのローカルMarkdown・画像は呼び出し元が作業全体の完了後に削除する。単独起動で作ったmanifestは、この投稿が正常完了した時点でstatus確認後にcleanupする。
+6. state更新はMCP担当。URLと検証結果を報告する。共有manifestのローカルMarkdown・画像は呼び出し元が作業全体の完了後、report内容を確定してから削除する。単独起動で作ったmanifestは、この投稿が正常完了・検証済みの時点でstatus確認後にcleanupする。検証不明・失敗・doNotRetry:trueで停止した場合はcleanupを呼ばず、closeでmanifestだけ確定し作業ファイルは保持する。
 
 ## 失敗時
 
 - 投稿開始後のエラーやdoNotRetry:trueでは再投稿しない。note ID/key、エラー、ローカル記録を報告する。
-- articles/publication-attempts/は再投稿防止記録。結果不明の記録を自動削除しない。
-- ログインや入力形式など外部書き込み前の失敗だけ原因解消後に再実行できる。
+- articles/publication-attempts/は本文内容＋公開意図（下書き/本公開）のハッシュをキーにした再投稿防止記録。結果不明の記録を自動削除しない。
+- note作成APIに到達する前の失敗（ログイン・入力形式・接続エラーなど）はdoNotRetry:falseで記録され、原因解消後に同じ記事で再実行できる。到達後・到達が不明な失敗はdoNotRetry:trueのまま残り、再実行しない。
 - 公開成功・ローカル保存失敗も再投稿しない。URLと作業ファイルを保持し障害として報告する。
+- articles/publication-attempts/にstatus:"started"のままfinishedAtがない記録は、プロセス異常終了などでnote側の結果が不明な状態。自動では再試行・削除せず、note.com側に対応する下書き/記事が実在しないか本人に手動確認を依頼してから扱いを決める。
 - MCPは3ツールのまま。削除・公開取り消し・既存記事更新を別経路で自動実行しない。

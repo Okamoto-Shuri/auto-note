@@ -69,7 +69,8 @@ test("preparePublication accepts an audited article with its eyecatch", async (t
 test("publication attempts are exclusive and retain IDs after verification failure", async (t) => {
   const root = await mkdtemp(join(tmpdir(), "note-journal-"));
   t.after(() => rm(root, { recursive: true, force: true }));
-  const prepared = { articlePath: join(root, "article.md"), metadata: { title: "test" } };
+  const prepared = { articlePath: join(root, "article.md"), metadata: { title: "test" },
+    options: { markdown: "本文", isPublish: false } };
   const attempt = await beginPublicationAttempt(prepared, root);
   await assert.rejects(beginPublicationAttempt(prepared, root), /do not retry/);
   await finishPublicationAttempt(attempt, { ok: false, note: { noteId: 12, noteKey: "n12" }, error: "missing image" });
@@ -78,6 +79,40 @@ test("publication attempts are exclusive and retain IDs after verification failu
   assert.equal(saved.doNotRetry, true);
   assert.equal(saved.status, "needs_review");
   await assert.rejects(beginPublicationAttempt(prepared, root), /do not retry/);
+});
+
+test("publication attempt keys on content and intent, not the file path", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "note-journal-content-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const sharedContent = { title: "同じ内容", options: { markdown: "同じ本文", isPublish: false } };
+  const first = { articlePath: join(root, "old-path.md"), metadata: sharedContent };
+  const rewritten = { articlePath: join(root, "different-path.md"), metadata: sharedContent };
+  const differentContent = { articlePath: join(root, "old-path.md"),
+    metadata: { title: "別の内容" }, options: { markdown: "別の本文", isPublish: false } };
+
+  const attempt = await beginPublicationAttempt(first, root);
+  // Same title/body/intent under a different path is recognized as the same attempt.
+  await assert.rejects(beginPublicationAttempt(rewritten, root), /do not retry/);
+  // A different article reusing the same old path gets its own independent attempt slot.
+  const other = await beginPublicationAttempt(differentContent, root);
+  assert.notEqual(other.path, attempt.path);
+});
+
+test("a confirmed pre-API failure clears doNotRetry and reopens the attempt slot", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "note-journal-retry-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const prepared = { articlePath: join(root, "article.md"), metadata: { title: "test" },
+    options: { markdown: "本文", isPublish: false } };
+  const attempt = await beginPublicationAttempt(prepared, root);
+  await finishPublicationAttempt(attempt, { ok: false, doNotRetry: false, error: "login required before reaching note" });
+  const saved = JSON.parse(await readFile(attempt.path, "utf8"));
+  assert.equal(saved.doNotRetry, false);
+  assert.equal(saved.status, "needs_review");
+
+  // A confirmed-safe prior failure allows a fresh attempt to reopen the same slot.
+  const retry = await beginPublicationAttempt(prepared, root);
+  assert.equal(retry.path, attempt.path);
+  assert.equal(retry.record.status, "started");
 });
 
 test("only verified publication updates state and leaves cleanup to the run manifest", async (t) => {

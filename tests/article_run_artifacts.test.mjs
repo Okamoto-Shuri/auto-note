@@ -3,7 +3,7 @@ import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promise
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { cleanupArtifactRun, inspectArtifactRun, registerArtifacts, startArtifactRun } from "../scripts/article_run_artifacts.mjs";
+import { cleanupArtifactRun, closeArtifactRun, inspectArtifactRun, registerArtifacts, startArtifactRun } from "../scripts/article_run_artifacts.mjs";
 
 test("artifact cleanup deletes only registered files created during the run", async (t) => {
   const root = await mkdtemp(join(tmpdir(), "article-artifacts-"));
@@ -31,6 +31,26 @@ test("artifact cleanup deletes only registered files created during the run", as
   assert.equal(await readFile(unrelated, "utf8"), "keep");
   await assert.rejects(access(ownedMarkdown), /ENOENT/);
   await assert.rejects(access(ownedImage), /ENOENT/);
+});
+
+test("closing a run keeps owned files and only removes the manifest", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "article-artifacts-close-"));
+  const manifests = join(root, "manifests");
+  const images = join(root, "drafts", "images");
+  await mkdir(images, { recursive: true });
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const { manifestPath } = await startArtifactRun({ articlesRoot: root, manifestRoot: manifests });
+  const ownedMarkdown = join(root, "drafts", "new.md");
+  const ownedImage = join(images, "new.png");
+  await writeFile(ownedMarkdown, "keep after local-only stop");
+  await writeFile(ownedImage, "keep after local-only stop");
+  await registerArtifacts(manifestPath, [ownedMarkdown, ownedImage], { articlesRoot: root });
+
+  const result = await closeArtifactRun(manifestPath, { articlesRoot: root });
+  assert.deepEqual(result.kept.sort(), ["drafts/images/new.png", "drafts/new.md"]);
+  assert.equal(await readFile(ownedMarkdown, "utf8"), "keep after local-only stop");
+  assert.equal(await readFile(ownedImage, "utf8"), "keep after local-only stop");
+  await assert.rejects(access(manifestPath), /ENOENT/);
 });
 
 test("artifact registration rejects files that existed before the run", async (t) => {
