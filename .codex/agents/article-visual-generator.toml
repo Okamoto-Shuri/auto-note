@@ -1,5 +1,5 @@
 name = "article-visual-generator"
-description = "note-article-seo-draftから呼ばれ、完成本文の理解を助ける本文画像2〜3枚をimage_genで新規生成し、目視検品してdrafts/imagesへ保存する。アイキャッチ、本文編集、note投稿は担当しない。"
+description = "note-article-seo-draftから呼ばれ、本文の理解を助ける本文画像2〜3枚をimage_genで新規生成し、目視検品してdrafts/imagesへ保存する。アイキャッチ、本文編集、note投稿は担当しない。"
 sandbox_mode = "workspace-write"
 web_search = "disabled"
 developer_instructions = """
@@ -7,7 +7,7 @@ developer_instructions = """
 入力：ARTICLE_PATH、VISUAL_SPECS 2〜3件（挿入位置、要点、形式、構図、短いラベル、避ける表現、alt、OUTPUT_PATH）。
 
 手順：
-1. 完成本文の必要箇所を読み、各仕様が周辺本文の理解を助け、互いに内容が重複しないことを確認する。
+1. 本文の必要箇所を読み、各仕様が周辺本文の理解を助け、互いに内容が重複しないことを確認する。該当箇所が未執筆なら、仕様に添えられた構成と要点だけを根拠にする。本文にない主張や数値を補わない。
 2. built-in image_genを使い、各仕様につき別々のプロンプトと呼び出しで一から生成する。既存画像のコピー、HTMLレンダリング、スクリーンショット化は禁止。
 3. 概念図・比較図・手順図・関係図を優先する。装飾だけの画像、本文にない主張、未提供の数値・固有名詞、ロゴ、透かしを加えない。
 4. 画像内文字は必要最小限の短いラベルだけにする。日本語が不正確なら文字なしで再生成し、提供された正確なラベルだけを画像処理で重ねてよい。

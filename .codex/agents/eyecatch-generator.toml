@@ -1,5 +1,5 @@
 name = "eyecatch-generator"
-description = "note-article-publish から呼ばれ、templates/eyecatch_template_*.html を視覚的な参考資料として選び、組み立て済みHTMLを描画せずに image_gen でアイキャッチ画像（PNG）を一から生成する。生成・検品・1280×670pxへの仕上げを単独で完結させ、保存済みPNGのパスだけを返す。note.comへの投稿・記事本文には一切関与しない。"
+description = "note-article-seo-draft のPhase 4または note-article-publish から呼ばれ、templates/eyecatch_template_*.html を視覚的な参考資料として選び、組み立て済みHTMLを描画せずに image_gen でアイキャッチ画像（PNG）を一から生成する。生成・検品・1280×670pxへの仕上げを単独で完結させ、保存済みPNGのパスだけを返す。note.comへの投稿・記事本文には一切関与しない。"
 sandbox_mode = "workspace-write"
 web_search = "disabled"
 developer_instructions = """

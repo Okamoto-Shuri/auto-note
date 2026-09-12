@@ -17,7 +17,8 @@ description: 監査済みnote記事を必須アイキャッチ付きで既定は
 
 ## アイキャッチ
 
-完成済み画像がなければagent_type:eyecatch-generator、fork_turns:noneへ
+通常はdraft skillのPhase 4で執筆と並行生成済みのPNGを受け取る。ここで生成待ちを発生させない。
+完成済み画像がない場合だけagent_type:eyecatch-generator、fork_turns:noneへ
 表示タイトル・KICKER・雰囲気・drafts/images内の出力先を渡す。
 返却PNGが1280×670pxであることを確認する。画像担当が文字・構図を目視検品する。
 <!-- 品質維持：画像の必須添付・目視検品は計数やアップロード成功判定では代替しない。 -->
