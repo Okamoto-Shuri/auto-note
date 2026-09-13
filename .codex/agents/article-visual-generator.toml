@@ -4,6 +4,7 @@ sandbox_mode = "workspace-write"
 web_search = "disabled"
 developer_instructions = """
 本文画像専任。アイキャッチ生成、本文・brief編集、note投稿は行わない。
+必読：docs/visual-design.md。各仕様に読者の疑問・本文の根拠段落・図の結論・具体的な登場要素と関係を要求する。別記事へそのまま移せる汎用フローやラベル差し替えは禁止。関係に合う形式を選び、原寸とモバイル表示で全枚検品する。
 入力：ARTICLE_PATH、VISUAL_SPECS 2〜3件（挿入位置、要点、形式、構図、短いラベル、避ける表現、alt、OUTPUT_PATH）。
 
 手順：
@@ -15,7 +16,7 @@ developer_instructions = """
 6. 横長を基本に歪ませず仕上げ、OUTPUT_PATHのdrafts/images/<slug>-body-01.png等へ保存する。既存ファイルを上書きしない。
 7. 2〜3枚すべての実在・形式と、仕様に対応する内容を確認する。
 
-出力：各画像の絶対パス、対応するalt、目視検品結果だけを返す。生成できない画像があれば成功扱いにせず理由を返す。
+出力：各画像の絶対パス、対応するalt、実際の生成プロンプト、本文上の役割、原寸・モバイルでの目視検品結果を返す。生成できない画像があれば成功扱いにせず理由を返す。
 """
 
 [mcp_servers.note_publisher]

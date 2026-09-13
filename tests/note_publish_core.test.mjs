@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, rm, writeFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { createHash } from "node:crypto";
 import { beginPublicationAttempt, finishPublicationAttempt, parseArticle, preparePublication, PROJECT_ROOT, recordPublication } from "../scripts/note_publish_core.mjs";
 
 test("parseArticle extracts frontmatter and body", () => {
@@ -42,7 +43,15 @@ test("preparePublication accepts an audited article with its eyecatch", async (t
   png.writeUInt32BE(1280, 16);
   png.writeUInt32BE(670, 20);
   await writeFile(eyecatchPath, png);
-  await Promise.all(bodyNames.map((name) => writeFile(join(imagesRoot, name), png)));
+  const bodyBytes = bodyNames.map((_, index) => Buffer.concat([png, Buffer.from([index])]));
+  await Promise.all(bodyNames.map((name, index) => writeFile(join(imagesRoot, name), bodyBytes[index])));
+  const review = { version: 1, images: [png, ...bodyBytes].map((bytes, index) => ({
+    sha256: createHash('sha256').update(bytes).digest('hex'), role: index ? 'body' : 'eyecatch',
+    generator: 'image_gen', prompt: 'test prompt', purpose: 'test relation',
+    review: { fullSize: true, mobile: true, articleMatch: true, notes: 'fixture only' },
+  })) };
+  await assert.rejects(preparePublication({ draftPath, eyecatchPath }), /Visual review/);
+  await writeFile(briefPath, '## Phase 7\n指摘事項なし\n\n```visual-review\n' + JSON.stringify(review) + '\n```\n');
 
   const prepared = await preparePublication({ draftPath, eyecatchPath, isPublish: true });
   assert.equal(prepared.options.title, "テスト専用記事");

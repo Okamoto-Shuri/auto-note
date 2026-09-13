@@ -2,6 +2,7 @@ import { mkdir, readFile, realpath, rename, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { checkVisualReview } from "./check_visual_review.mjs";
 
 export const PROJECT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DRAFTS_ROOT = join(PROJECT_ROOT, "articles", "drafts");
@@ -128,6 +129,14 @@ export async function preparePublication({
     const imagePath = await safeFile(resolve(dirname(articlePath), reference), DRAFTS_ROOT);
     images.push({ path: reference, base64: await readFile(imagePath, "base64"), mime: mimeFor(imagePath) });
   }
+
+  let visualBrief = "";
+  try { visualBrief = await readFile(articlePath.replace(/\.md$/, ".seo-brief.md"), "utf8"); }
+  catch (error) { if (error.code !== "ENOENT") throw error; }
+  checkVisualReview(visualBrief, [
+    { bytes: imageBytes, role: "eyecatch" },
+    ...images.map((image) => ({ bytes: Buffer.from(image.base64, "base64"), role: "body" })),
+  ]);
 
   return {
     articlePath,

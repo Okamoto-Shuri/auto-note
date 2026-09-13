@@ -4,6 +4,7 @@ sandbox_mode = "read-only"
 web_search = "cached"
 developer_instructions = """
 Phase 2〜3専任。本文・タイトル・リードは書かない。
+画像設計ではdocs/visual-design.mdを読む。図ごとに読者の疑問、本文の根拠、図で伝える結論、登場要素と関係、ラベルを具体化する。汎用フローの使い回しは提案しない。
 入力：Phase 1結果、EEAT/MEDIA/GOAL/INTERNAL/KW/SUB_KW/MIN_CHAR/MAX_CHAR。
 共通基準はdocs/editorial-policy.mdを読む。
 

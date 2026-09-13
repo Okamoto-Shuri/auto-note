@@ -35,6 +35,8 @@ description: 1本または明示された複数のnote記事を、調査・SEO�
 
 ## Phase 0：要件
 
+画像設計では `docs/visual-design.md` を読む。バッチのvisual_directionを記事ごとに確定してから各画像agentへ渡す。専任agentの起動失敗を親によるテンプレート一括執筆・描画で代替しない。部分成功のagentを回収し、終了枠を閉じて同工程を分割する。
+
 編集方針からKW/SUB_KW/PERSONA/GOAL/MEDIA/EEAT/INTERNAL/NG/MIN_CHAR/MAX_CHARを確定する。
 提供SERPは優先する。重要な未指定事項だけ質問し、仮定と根拠をbriefへ記録する。
 
@@ -58,7 +60,7 @@ Phase 1の結果とKW/SUB_KW/EEAT/MEDIA/GOAL/INTERNAL/MIN_CHAR/MAX_CHARを渡す
 入力はMODE、ARTICLE_PATH、読み取り専用のBRIEF_PATH、Phase 0の全変数、topic_id/created_at、記事固有のPhase 1〜3結果と出典・画像仕様。数値の単位・対象・日時・前提も渡す。
 まずMODE:titleでPhase 4の10タイトル比較・採用案・3メタ・リード・導入・アイキャッチ仕様を受け取り、親がタイトルを確定しbriefへ保存する。次に同じwriterへMODE:bodyで確定結果を渡し、Phase 5〜6を最後まで執筆させる。引き継ぎのためにユーザーへ逐次確認しない。
 バッチでは記事ごとに別writerを使い、Phase 4の波の後にPhase 5〜6の波を進める。本文はwriterだけ、briefは親だけが編集し、writer稼働中に親が本文を書き換えない。writerの本文保存結果を受け取った親が直ちにmanifest登録する。
-タイトル確定直後に、記事ごとのagent_type:eyecatch-generator、fork_turns:noneをまとめて起動し、執筆と並行させる。確定した記事タイトル、画像中央へ大きく出す4〜12字目安のフックコピー、KICKER、雰囲気、drafts/images内の出力先を渡す。フックコピーは記事タイトルと同じにする必要はなく、内容と矛盾しない短く引きのある独立した言葉にする。返却PNGは投稿時まで保持する。
+タイトル確定直後に、記事ごとのagent_type:eyecatch-generator、fork_turns:noneをまとめて起動し、執筆と並行させる。選択したテンプレート画像、確定した記事タイトル、構図に合わせて大きく読みやすく配置する4〜12字目安のフックコピー、KICKER、雰囲気、drafts/images内の出力先を渡す。フックコピーは記事タイトルと同じにする必要はなく、内容と矛盾しない短く引きのある独立した言葉にする。テンプレート画像の使用と大きなフック文字を目視確認できるまで記事を完成扱いにせず、返却PNGは投稿時まで保持する。
 画像仕様はPhase 3で確定しているため、agent_type:article-visual-generator、fork_turns:noneも執筆と並行して起動してよい。本文パスと画像仕様2〜3件を渡し、本文が未確定な章では構成と要点を仕様へ添える。
 返却された全画像を目視検品し、挿入前に確定本文との整合を必ず確認する。ずれがあれば該当画像だけ再生成し、説明対象の近くへalt付きMarkdownで挿入する。再生成は画像ごとに最大2回までとし、2回で解消しなければ未解決点として最終報告に明記し次工程へ進む。画像生成と検品が完了するまで記事を完成扱いにしない。
 writer完了後、親が返却記録をbriefへ保存し、画像を挿入してnote-format.mdの一括チェックを実行する。本文の指摘は同じwriterへMODE:reviseでまとめて渡し、briefの指摘は親が修正する。各修正後は親が再チェックする。修正と再チェックの往復は記事全体で最大3回までとし、3回で解消しない指摘は未解決点として記録し報告へ進む。未通過の記事は監査・投稿へ進めない。
