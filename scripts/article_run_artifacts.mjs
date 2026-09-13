@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, realpath, rename, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -75,6 +76,7 @@ export async function startArtifactRun({ articlesRoot = ARTICLES_ROOT, manifestR
 
 export async function registerArtifacts(manifestPath, paths, { articlesRoot = ARTICLES_ROOT } = {}) {
   const { manifest, actualRoot } = await loadManifest(manifestPath, articlesRoot);
+  const candidates = [];
   for (const input of paths) {
     const candidate = isAbsolute(input) ? resolve(input) : resolve(PROJECT_ROOT, input);
     const actual = await realpath(candidate);
@@ -84,7 +86,21 @@ export async function registerArtifacts(manifestPath, paths, { articlesRoot = AR
     if (manifest.baseline.includes(normalized)) {
       throw new Error(`Refusing to register a file that existed before this run: ${normalized}`);
     }
+    candidates.push({ normalized, absolute: actual });
     if (!manifest.owned.includes(normalized)) manifest.owned.push(normalized);
+  }
+  const images = [...manifest.owned, ...candidates.map(({ normalized }) => normalized)]
+    .filter((path, index, all) => all.indexOf(path) === index)
+    .filter((path) => /\.(?:png|jpe?g|webp|gif)$/i.test(path));
+  const hashes = new Map();
+  for (const rel of images) {
+    const absolute = join(actualRoot, rel);
+    const digest = createHash("sha256").update(await readFile(absolute)).digest("hex");
+    const previous = hashes.get(digest);
+    if (previous && previous !== rel) {
+      throw new Error(`Duplicate image content is not allowed in one article run: ${previous} and ${rel}`);
+    }
+    hashes.set(digest, rel);
   }
   manifest.owned.sort();
   await atomicWrite(manifestPath, manifest);
