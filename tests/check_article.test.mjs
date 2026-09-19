@@ -82,9 +82,9 @@ test("body image file checks reject missing files and paths outside drafts", asy
   assert.ok(codes.includes("body_image_format"));
 });
 
-test("one pass reports short title, stale FAQ count, tags and mismatched JSON-LD", () => {
+test("one pass reports missing title, stale FAQ count, tags and mismatched JSON-LD", () => {
   let { markdown, brief } = fixture();
-  markdown = markdown.replace(/^title: .*$/m, 'title: "短"').replace("<toc>", "<toc>\n[要確認：日付]");
+  markdown = markdown.replace(/^title: .*$/m, 'title: ""').replace("<toc>", "<toc>\n[要確認：日付]");
   brief = brief.replace("FAQ数: 4", "FAQ数: 5").replace('"name":"質問0"', '"name":"別の質問"');
   const codes = checkArticle(markdown, brief).errors.map((e) => e.code);
   for (const c of ["title_length", "selected_title", "unresolved_tags", "faq_record", "json_ld_faq"]) assert.ok(codes.includes(c), c);
@@ -112,16 +112,52 @@ test("headings require blank source lines on both sides", () => {
   assert.ok(codes.includes("heading_spacing"));
 });
 
-test("title candidates require contrarian variety, five-axis scores and real recovery headings", () => {
+test("direct titles are eligible without contrarian quotas; scores and recovery remain required", () => {
   const { markdown, brief } = fixture();
-  const invalidBrief = brief
-    .replace(/型:理論反証/g, "型:直球")
-    .replace(/型:逆説/g, "型:直球")
+  const directBrief = brief.replace(/型:[^｜\n]+/g, "型:直球");
+  assert.deepEqual(checkArticle(markdown, directBrief).errors, []);
+  const invalidBrief = directBrief
     .replace("5/5/5/5/5=25", "5/5/5/5=20")
     .replace("回収:本論4", "回収:存在しない見出し");
   const codes = checkArticle(markdown, invalidBrief).errors.map((error) => error.code);
 
-  for (const code of ["title_theory_hooks", "title_paradox_hooks", "title_direct_limit", "selected_title_hook", "title_score", "title_recovery"]) {
+  for (const code of ["title_score", "title_recovery"]) {
     assert.ok(codes.includes(code), code);
   }
+});
+
+test("three substantial chapters without H3, a short opening and no FAQ pass together", () => {
+  let { markdown, brief } = fixture();
+  const oldTitle = markdown.match(/^title: "(.*)"$/m)[1];
+  const title = "転職したいけれど応募先が決まらない。求人を見る前に整理すること";
+  markdown = markdown.replace(oldTitle, title)
+    .replace("導".repeat(130) + "\n\n" + "入".repeat(400), "導".repeat(200))
+    .replace(/^### (理由|適用)\n\n/gm, "")
+    .replace(/## 本論3[\s\S]*?(?=## まとめ)/, "")
+    .replaceAll("文".repeat(350), "文".repeat(650));
+  brief = brief.replace(oldTitle, title)
+    .replace(/型:[^｜\n]+/g, "型:直球")
+    .replace(/回収:本論[34]/g, "回収:本論0")
+    .replace(/^- (本論[34]|よくある質問)｜\d+\n/gm, "")
+    .replace("FAQ数: 4", "FAQ数: 0")
+    .replace(/```json\n[\s\S]*?\n```/, '```json\n{"@context":"https://schema.org","@type":"Article"}\n```');
+  const result = checkArticle(markdown, brief);
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.metrics.mainH2, 3);
+  assert.equal(result.metrics.introChars, 0);
+  assert.equal(result.metrics.faqCount, 0);
+  assert.ok(checkArticle(markdown.replace("文".repeat(650), ""), brief).errors.some(e => e.code === "body_length"));
+});
+
+test("optional FAQ still rejects empty sections, empty answers and stale schemas", () => {
+  const { markdown, brief } = fixture();
+  const noFaq = markdown.replace(/## よくある質問[\s\S]*?(?=## まとめ)/, "");
+  const errors = checkArticle(noFaq, brief).errors.map(e => e.code);
+  assert.ok(errors.includes("faq_record"));
+  assert.ok(errors.includes("json_ld_faq"));
+  const emptySection = noFaq.replace("## まとめ", "## よくある質問\n\n## まとめ");
+  assert.ok(checkArticle(emptySection, brief).errors.some(e => e.code === "faq_section"));
+  assert.ok(checkArticle(markdown.replace("答".repeat(90), ""), brief).errors.some(e => e.code === "faq_answer:質問0"));
+  const emptySchema = brief.replace(/"mainEntity":\[[\s\S]*\]}/, '"mainEntity":[]}').replace("FAQ数: 4", "FAQ数: 0");
+  assert.ok(checkArticle(noFaq, emptySchema).errors.some(e => e.code === "json_ld_faq"));
 });

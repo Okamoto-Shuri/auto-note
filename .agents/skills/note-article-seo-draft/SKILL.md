@@ -50,8 +50,8 @@ agent_type:seo-researcher、fork_turns:noneでKW/SUB_KW/PERSONA/SERPを渡す。
 
 各記事のresearcher完了後にagent_type:seo-planner、fork_turns:noneを使う。
 バッチでは全記事のPhase 1が揃った時点でplannerを同時に呼ぶ。
-Phase 1の結果とKW/SUB_KW/EEAT/MEDIA/GOAL/INTERNAL/MIN_CHAR/MAX_CHARを渡す。
-差別化3案の比較・推奨理由・クラスター・エンティティ・全見出しと配分をbriefへ保存する。
+Phase 1の結果とKW/SUB_KW/PERSONA/EEAT/MEDIA/GOAL/INTERNAL/MIN_CHAR/MAX_CHARを渡す。
+調査で具体化したPERSONAの一文をPhase 0の値へ反映し、差別化3案の比較・推奨理由・クラスター・エンティティ・全見出しと配分をbriefへ保存する。更新したPERSONAをwriterへ渡す。
 導入・FAQ・まとめを含む合計を確認してから執筆する。
 
 ## Phase 4〜6：執筆

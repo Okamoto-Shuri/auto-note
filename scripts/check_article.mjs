@@ -82,11 +82,10 @@ export function checkArticle(markdown, brief = "") {
   const tags = [...body.matchAll(/\[(要データ|要確認|要出典)(?:[：:][^\]]*)?\]/g)].map((m) => m[0]);
   const bodyImages = extractBodyImages(body);
   range("body_length", countText(body), 4000, 6000);
-  range("title_length", [...title].length, 28, 32);
-  range("lead_length", lead, 120, 160);
-  range("intro_length", intro, 350, 450);
-  range("main_h2", main.length, 5, 7);
-  range("faq_count", faq.length, 4, 6);
+  // Editorial lengths and heading counts are guidance, not padding requirements.
+  if (!title.trim()) add("title_length", "タイトルが必要です");
+  if (!lead) add("lead_length", "目次より前にリードが必要です");
+  if (!main.length) add("main_h2", "本論のH2が必要です");
   range("body_image_count", bodyImages.length, 2, 3);
   if (tocLines.length !== 1 || tocLines[0].trim() !== "<toc>") {
     add("toc_tag", "<toc>は単独行で1回だけ必要です");
@@ -99,7 +98,7 @@ export function checkArticle(markdown, brief = "") {
   if (bodyImages.some((image) => !image.alt)) add("body_image_alt", "本文画像には空でないaltが必要です");
   if (bodyImages.some((image) => /^(https?:|data:)/i.test(image.path))) add("body_image_remote", "本文画像はdrafts内のローカルファイルを参照してください");
   if (new Set(bodyImages.map((image) => image.path)).size !== bodyImages.length) add("body_image_duplicate", "本文画像は異なるファイルを2〜3枚使ってください");
-  if (faqSections.length !== 1) add("faq_section", "よくある質問のH2は1つ必要です");
+  if (faqSections.length > 1 || (faqSections.length === 1 && !faq.length)) add("faq_section", "FAQは省略するか、質問を含むH2を1つ設けてください");
   if (tags.length) add("unresolved_tags", tags.join("、"));
   if (/^#{1}(?: |$)|^#{4,}\s/m.test(structure)) add("heading_level", "見出しはH2/H3までです");
   const structureLines = structure.split("\n");
@@ -111,8 +110,9 @@ export function checkArticle(markdown, brief = "") {
   if ((body.match(/^\s*```/gm) || []).length % 2) add("code_fence", "コードブロックが閉じていません");
   const payLines = structure.split("\n").filter((l) => /<\/?pay>|<pay_line>/i.test(l));
   if (payLines.length > 1 || payLines.some((l) => l.trim() !== "<pay>")) add("pay_tag", "<pay>は単独行で最大1回です");
-  for (const s of main) range(`h3:${s.title}`, sections(s.content, 3).length, 2, 4);
-  faq.forEach((q) => range(`faq_answer:${q.title}`, countText(q.content), 80, 120));
+  faq.forEach((q) => {
+    if (!countText(q.content)) add(`faq_answer:${q.title}`, "FAQの回答が空です");
+  });
   if (/^### /m.test(withoutCode(introBlock))) add("heading_order", "H2より前にH3があります");
 
   const titleLines = briefSection(brief, "タイトル候補").split("\n").filter((l) => /^\d+\. /.test(l));
@@ -127,7 +127,9 @@ export function checkArticle(markdown, brief = "") {
   const titles = titleRecords.map((record) => record.title);
   const metas = briefSection(brief, "メタ候補").split("\n").filter((l) => /^- /.test(l)).map((l) => l.slice(2).trim());
   range("title_candidates", titles.length, 10, 10);
-  titles.forEach((t, i) => range(`title_candidate:${i + 1}`, [...t].length, 28, 32));
+  titles.forEach((t, i) => {
+    if (!t.trim()) add(`title_candidate:${i + 1}`, "タイトル候補が空です");
+  });
   if (new Set(titles).size !== titles.length) add("title_candidate_duplicate", "タイトル候補は10案すべて異なる案にしてください");
   if (!titles.includes(title)) add("selected_title", "本文タイトルが候補にありません");
   const allowedTitleTypes = new Set(["理論反証", "逆説", "前提反転", "因果反転", "直球"]);
@@ -135,12 +137,6 @@ export function checkArticle(markdown, brief = "") {
     if (!allowedTitleTypes.has(record.type)) add("title_type", `候補${i + 1}の型を確認してください`);
     if (!h2.some((section) => section.title === record.recovery)) add("title_recovery", `候補${i + 1}の回収先H2が本文にありません`);
   });
-  const titleTypeCount = (type) => titleRecords.filter((record) => record.type === type).length;
-  if (titleTypeCount("理論反証") < 2) add("title_theory_hooks", "理論反証型を2案以上作ってください");
-  if (titleTypeCount("逆説") < 2) add("title_paradox_hooks", "逆説型を2案以上作ってください");
-  if (new Set(titleRecords.map((record) => record.type).filter((type) => allowedTitleTypes.has(type))).size < 3) add("title_type_diversity", "タイトル候補に3型以上を使ってください");
-  if (titleTypeCount("直球") > 2) add("title_direct_limit", "直球型は2案までです");
-  if (titleRecords.find((record) => record.title === title)?.type === "直球") add("selected_title_hook", "採用タイトルは直球以外の反転型から選んでください");
   titleLines.forEach((line, i) => {
     const m = line.match(/｜([0-5])\/([0-5])\/([0-5])\/([0-5])\/([0-5])\s*[=＝]\s*(\d+)/);
     if (!m || m.slice(1, 6).reduce((a, n) => a + Number(n), 0) !== Number(m[6])) add("title_score", `候補${i + 1}の5軸採点/合計を確認してください`);
@@ -175,7 +171,7 @@ export function checkArticle(markdown, brief = "") {
   if (!schemas.length) add("json_ld", "briefにJSON-LDがありません");
   for (const schema of schemas.filter((s) => [].concat(s["@type"]).includes("FAQPage"))) {
     const entries = schema.mainEntity;
-    if (!Array.isArray(entries) || entries.length !== faq.length || entries.some((e, i) =>
+    if (!faq.length || !Array.isArray(entries) || entries.length !== faq.length || entries.some((e, i) =>
       visibleText(String(e?.name || "")) !== visibleText(faq[i]?.title || "") || visibleText(String(e?.acceptedAnswer?.text || "")) !== visibleText(faq[i]?.content || ""))) {
       add("json_ld_faq", "FAQPageの質問・回答が本文と一致しません");
     }
@@ -186,7 +182,7 @@ export function checkArticle(markdown, brief = "") {
     metrics: { titleChars: [...title].length, bodyChars: countText(body), leadChars: lead, introChars: intro,
       mainH2: main.length, faqCount: faq.length, bodyImageCount: bodyImages.length, chapters: chapterMetrics, unresolvedTags: tags,
       auditRecorded: /指摘事項なし|反映済み/.test(phase7) },
-    manualChecks: ["出典・最新性・単位・前提", "文体・論理・KW配置", "段落分けと見出し前の余白", "導入直後の目次", "タイトルの反転主張と本文回収", "上位3タイトルの理由", "画像目視検品", "独立監査の全指摘反映"],
+    manualChecks: ["出典・最新性・単位・前提", "文体・論理・KW配置", "段落分けと見出し前の余白", "導入直後の目次", "タイトルで約束した答えの本文回収", "上位3タイトルの理由", "画像目視検品", "独立監査の全指摘反映"],
   };
 }
 
